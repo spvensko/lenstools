@@ -1,8 +1,8 @@
 #!/usr/bin/env nextflow
 
-process lenstools_make_peptide {
+process lenstools_make_peptides {
 
-  conda 'pyvcf biopython'
+  conda 'bioconda::pyvcf bioconda::biopython'
 
   input:
   tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(vcf)
