@@ -7,6 +7,9 @@ from Bio.SeqUtils import seq1
 import re
 import sys
 from pprint import pprint
+import numpy as np
+from scipy import stats
+import csv
 
 def get_args():
     """
@@ -29,6 +32,28 @@ def get_args():
                                       help="Total peptide length.",
                                       default=8)
     parser_make_peptides.add_argument('-o', '--output',
+                                      help="Output file name.",
+                                      required=True)
+    
+    # Subparser for filtering variants for expressin
+    parser_expressed_variants = subparsers.add_parser('expressed-variants',
+                                                 help="Filter expressed variants.")
+    parser_expressed_variants.add_argument('-a', '--abundances',
+                                           help="Transcript abundance file.",
+                                           required=True)
+    parser_expressed_variants.add_argument('-m', '--metric',
+                                           help="Column for expression from abundance file.",
+                                           default="TPM")
+    parser_expressed_variants.add_argument('-r', '--exclude-zeros',
+                                           help="Exclude zero counts when calculating percentile.",
+                                           action='store_true')
+    parser_expressed_variants.add_argument('-p', '--percentile',
+                                           help="Percentile for determining expression.",
+                                           default=50)
+    parser_expressed_variants.add_argument('-v', '--vcf',
+                                      help="Annotated VCF).",
+                                      required=True)
+    parser_expressed_variants.add_argument('-o', '--output',
                                       help="Output file name.",
                                       required=True)
 
@@ -113,14 +138,106 @@ def make_peptides(args):
     with open(args.output, 'w') as ofo:
         for k, v in emitted_peptides.items():
             ofo.write('>{}\n{}\n'.format(k, v))
-   
 
+def expressed_variants(args):
+    """
+    """
+    tx_abundances = load_tx_abundances(args)
+    tx_threshold = get_tx_threshold(args, tx_abundances)
+    expressed_txids = get_expressed_txs(args, tx_threshold)
+    print(tx_threshold)
+    print(len(expressed_txids))
+    print(expressed_txids[:10])
+    filtered_records = filter_vcf_by_expression(args, expressed_txids)
+    print(len(filtered_records))
+    write_expressed_vcf(args, filtered_records)
+
+def load_tx_abundances(args):
+    """
+    """
+    count_column = ''
+    counts = np.array([])
+    print("okay!")
+    with open(args.abundances) as fo:
+        header = []
+        cfo = csv.reader(fo, delimiter='\t')
+        for line_idx, line in enumerate(cfo):
+            if line_idx == 0:
+                header = line
+                for i,j in enumerate(header):
+                    if j ==  args.metric:
+                        count_column = i
+            elif line_idx: 
+                count = float(line[count_column])
+                if args.exclude_zeros:
+                    if count> 0:
+                       counts = np.append(counts, count)
+                else:
+                    counts = np.append(counts, count)
+
+    return counts
+   
+def get_tx_threshold(args, counts):
+    """
+    """
+    threshold = np.percentile(counts, int(args.percentile))
+    return threshold
+
+def get_expressed_txs(args, threshold):
+    """
+    """
+    count_column = ''
+    txid_column = ''
+    expressed_txids = []
+    print("okay!")
+    with open(args.abundances) as fo:
+        header = []
+        cfo = csv.reader(fo, delimiter='\t')
+        for line_idx, line in enumerate(cfo):
+            if line_idx == 0:
+                header = line
+                for i,j in enumerate(header):
+                    if j ==  args.metric:
+                        count_column = i
+                    elif j == 'Name':
+                        txid_column = i
+            elif line_idx: 
+                count = float(line[count_column])
+                if count > threshold:
+                    expressed_txids.append(line[txid_column])
+    return expressed_txids
+
+def filter_vcf_by_expression(args, expressed_txids):
+    """
+    """
+    filtered_records = []
+    vcf_reader = vcf.Reader(filename=args.vcf, compressed=True)
+    for record in vcf_reader:
+        possible_variants = [x for x in record.INFO['ANN']]
+        for possible_variant in possible_variants:
+            split_possible = possible_variant.split('|')
+            if split_possible[1] == 'missense_variant' and split_possible[13] and split_possible[-1] == '':
+                #Having to strip version off transcript for this.
+                transcript = split_possible[6].partition('.')[0]
+                if transcript in expressed_txids:
+                    filtered_records.append(record)
+    return filtered_records
+
+def write_expressed_vcf(args, filtered_records):
+    """
+    """
+    vcf_reader = vcf.Reader(filename=args.vcf)
+    vcf_writer = vcf.Writer(open(args.output, 'w'), vcf_reader)
+    for filtered_record in filtered_records:
+        vcf_writer.write_record(filtered_record)
 
 def main():
     args = get_args()
     #print(args)
     if args.command == 'make-peptides':
         make_peptides(args)    
+    if args.command == 'expressed-variants':
+        expressed_variants(args)    
 
 if __name__=='__main__':
     main()
