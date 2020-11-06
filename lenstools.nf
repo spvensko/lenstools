@@ -2,7 +2,7 @@
 
 process lenstools_make_peptides {
 
-  conda 'bioconda::pyvcf bioconda::biopython'
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy'
 
   input:
   tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(vcf)
@@ -19,7 +19,7 @@ process lenstools_make_peptides {
 
 process lenstools_filter_expressed_variants {
 
-  conda 'bioconda::pyvcf bioconda::biopython'
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy'
 
   input:
   tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(vcf), path(quant)

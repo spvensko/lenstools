@@ -76,7 +76,8 @@ def extract_potential_somatic_vars(args):
     This will need to be cleaned heavily, but good for now.
     """
     filtered_records = []
-    vcf_reader = vcf.Reader(open(args.vcf), 'r', compressed=True)
+    #vcf_reader = vcf.Reader(open(args.vcf), 'r', compressed=True)
+    vcf_reader = vcf.Reader(open(args.vcf), 'r')
     for record in vcf_reader:
         possible_variants = [x for x in record.INFO['ANN']]
         for possible_variant in possible_variants:
@@ -211,7 +212,7 @@ def filter_vcf_by_expression(args, expressed_txids):
     """
     """
     filtered_records = []
-    vcf_reader = vcf.Reader(filename=args.vcf, compressed=True)
+    vcf_reader = vcf.Reader(filename=args.vcf, compressed=False)
     for record in vcf_reader:
         possible_variants = [x for x in record.INFO['ANN']]
         for possible_variant in possible_variants:
