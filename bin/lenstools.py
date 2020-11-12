@@ -35,6 +35,23 @@ def get_args():
                                       help="Output file name.",
                                       required=True)
     
+    # Subparser for generating indel peptides
+    parser_make_indel_peptides = subparsers.add_parser('make-indel-peptides',
+                                                 help="Make indel peptide FASTA file.")
+    parser_make_indel_peptides.add_argument('-t', '--tx-aa-fasta',
+                                      help="Transcript amino acid sequences.",
+                                      required=True)
+    parser_make_indel_peptides.add_argument('-v', '--vcf',
+                                      help="Annotated (by snpeff/?) VCF).",
+                                      required=True)
+    parser_make_indel_peptides.add_argument('-l', '--length',
+                                      help="Total peptide length.",
+                                      default=8)
+    parser_make_indel_peptides.add_argument('-o', '--output',
+                                      help="Output file name.",
+                                      required=True)
+    
+    
     # Subparser for filtering variants for expressin
     parser_expressed_variants = subparsers.add_parser('expressed-variants',
                                                  help="Filter expressed variants.")
@@ -105,6 +122,46 @@ def extract_potential_somatic_vars(args):
                 
     return filtered_records
 
+def extract_potential_somatic_indels(args):
+    """
+    This will need to be cleaned heavily, but good for now.
+
+    Focusing on deletions now, need to find a good example of a conservative_inframe_insertion
+    """
+    filtered_records = []
+    #vcf_reader = vcf.Reader(open(args.vcf), 'r', compressed=True)
+    vcf_reader = vcf.Reader(open(args.vcf), 'r')
+    for record in vcf_reader:
+        possible_variants = [x for x in record.INFO['ANN']]
+        for possible_variant in possible_variants:
+#            if re.search("\|conserative_inframe_insertion\|", possible_variant) or re.search("\|conserative_inframe_deletion\|", possible_variant):
+            split_possible = possible_variant.split('|')
+            if re.search('^conservative_inframe_[a-z]+$', split_possible[1]) and split_possible[13] and split_possible[-1] == '':
+                print(split_possible)
+#                transcript = split_possible[6].split('.')[0]
+                transcript = split_possible[6]
+                change = split_possible[10].lstrip('p.')
+                print(change)
+#                change = re.split('(\d+)', change)
+#                print(change)
+#                pre = change[0]
+#                post = change[2]
+#                pos = change[1]
+#                pre1 = seq1(pre)
+#                post1 = seq1(post) 
+#                chr_pos = record
+#                print(chr_pos)
+#                print("{} {} {} {} {} {} {}".format(transcript, change, pre, pre1, post, post1, pos))
+                print("{} {}".format(transcript, change))
+#                pos_total = split_possible[13] 
+#                snapshot = pos_total.split('/')[0]
+#                tlen = pos_total.split('/')[1] 
+#                if pos != snapshot:
+#                    sys.exit(1)
+                filtered_records.append([transcript, change, record])
+                
+    return filtered_records
+
 def make_peptides(args):
     """
     """
@@ -135,6 +192,46 @@ def make_peptides(args):
                 mut_peptide = ''.join(mut_seq[max(pos-8, 0):min(pos+8, len(mut_seq))])
                 print("{}\n{}\n{}".format(record[0],ref_peptide, mut_peptide))
                 emitted_peptides["{} {} {} {} {}".format(record[0], record[-1].CHROM, record[-1].POS, record[-1].REF, record[-1].ALT)] = mut_peptide
+
+    with open(args.output, 'w') as ofo:
+        for k, v in emitted_peptides.items():
+            ofo.write('>{}\n{}\n'.format(k, v))
+
+def make_indel_peptides(args):
+    """
+    """
+    tx_to_aa = load_tx_aas(args)
+    print(tx_to_aa['ENST00000369529.1'])
+    filtered_records = extract_potential_somatic_indels(args)
+    emitted_peptides = {}
+    for record in filtered_records:
+        print(record)
+        if record[0] in tx_to_aa.keys():
+            print("In the dict!")
+            tx_ref_seq = list(tx_to_aa[record[0]])
+            #print(tx_ref_seq) 
+            print(len(tx_ref_seq))
+#            if len(tx_ref_seq) != int(record[2]):
+#                print("transcript {} shows different lengths between peptide fasta ({}) and snpeff! ({})".format(record[0], record[2], len(tx_ref_seq)))
+            mut_seq = tx_ref_seq[:]
+            if re.search("del$", record[1]):
+                del_rec = record[1].strip('del')
+                start_pos = int(del_rec.split('_')[0][3:]) - 1
+                start_aa = seq1(del_rec.split('_')[0][:3])
+                stop_pos = int(del_rec.split('_')[1][3:]) - 1
+                stop_aa = seq1(del_rec.split('_')[1][:3])
+                print("{} {}".format(start_pos, start_aa))
+                print("{} {}".format(stop_pos, stop_aa))
+                if mut_seq[start_pos] != start_aa or mut_seq[stop_pos] != stop_aa:
+                    print("Reference amino acid doesn't match! Something has gone horribly wrong.")
+                else: 
+                    #mut_seq[pos] = record[4]
+                    new_mut_seq = ''.join(mut_seq[:start_pos] + mut_seq[stop_pos+1:]) 
+#                    print(new_mut_seq)
+                    ref_peptide = ''.join(tx_ref_seq[max(start_pos-8,0):min(stop_pos+8, len(mut_seq))])
+                    mut_peptide = ''.join(new_mut_seq[max(start_pos-8, 0):min(start_pos+8, len(new_mut_seq))])
+                    print("{}\n{}\n{}".format(record[0],ref_peptide, mut_peptide))
+                    emitted_peptides["{} {} {} {} {}".format(record[0], record[-1].CHROM, record[-1].POS, record[-1].REF, record[-1].ALT)] = mut_peptide
 
     with open(args.output, 'w') as ofo:
         for k, v in emitted_peptides.items():
@@ -237,6 +334,8 @@ def main():
     #print(args)
     if args.command == 'make-peptides':
         make_peptides(args)    
+    if args.command == 'make-indel-peptides':
+        make_indel_peptides(args)    
     if args.command == 'expressed-variants':
         expressed_variants(args)    
 
