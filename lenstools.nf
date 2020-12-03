@@ -56,7 +56,7 @@ process lenstools_filter_isolated_variants {
   conda 'bioconda::pyvcf bioconda::biopython'
 
   input:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(cand_vcf), path(somatic_vcf), path(germline_vcf)
+  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(somatic_vcf), path(germline_vcf)
   val parstr
 
   output:
@@ -64,6 +64,6 @@ process lenstools_filter_isolated_variants {
 
   script:
   """
-  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py expressed-variants -c ${cand_vcf} -s ${somatic_vcf} -g ${germlline_vcf}  #-o ${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix}.annot.isofilt.vcf
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py isolated-variants -s ${somatic_vcf} -g ${germline_vcf}  #-o ${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix}.annot.isofilt.vcf
   """
 }
