@@ -56,6 +56,25 @@ def get_args():
     parser_expressed_variants.add_argument('-o', '--output',
                                       help="Output file name.",
                                       required=True)
+    
+    # Subparser for filtering variants for expressin
+    parser_isolated_variants = subparsers.add_parser('isolated-variants',
+                                                 help="Filter isolated variants.")
+    parser_isolated_variants.add_argument('-g', '--germline-vcf',
+                                           help="Germline VCF.",
+                                           required=True)
+    parser_isolated_variants.add_argument('-s', '--somatic-vcf',
+                                           help="Somatic VCF.",
+                                           required=True)
+    parser_isolated_variants.add_argument('-p', '--proximity',
+                                           help="Required clearance around variant (in bp).",
+                                           default=30)
+    parser_isolated_variants.add_argument('-a', '--allow-silent-and-homozygous',
+                                           help="Allow silent and homozygous germline variants near variant.",
+                                           action="store_true")
+    parser_isolated_variants.add_argument('-o', '--output',
+                                          help="Output file name.",
+                                          required=True)
 
     return parser.parse_args()
 
@@ -226,10 +245,83 @@ def filter_vcf_by_expression(args, expressed_txids):
 def write_expressed_vcf(args, filtered_records):
     """
     """
-    vcf_reader = vcf.Reader(filename=args.vcf)
+    vcf_reader = vcf.Reader(open(args.vcf), 'r')
     vcf_writer = vcf.Writer(open(args.output, 'w'), vcf_reader)
     for filtered_record in filtered_records:
         vcf_writer.write_record(filtered_record)
+
+def write_isolated_vcf(args, filtered_records):
+    """
+    """
+    vcf_reader = vcf.Reader(filename=args.somatic_vcf, compressed=True)
+    vcf_writer = vcf.Writer(open(args.output, 'w'), vcf_reader)
+    for filtered_record in filtered_records:
+        vcf_writer.write_record(filtered_record)
+
+
+def isolated_variants(args):
+    """
+    """
+    cand_vars = get_candidate_variants(args)
+    print("# of candidate variants: {}".format(len(cand_vars)))
+    isolated_vars = get_all_isolated_variants(args)
+    print("# of isolated variants: {}".format(len(isolated_vars)))
+    isolated_cand_vars = []
+    for record in cand_vars:
+        if record in isolated_vars:
+            isolated_cand_vars.append(record)
+    print("# of isolated candidate variants: {}".format(len(isolated_cand_vars)))
+    write_isolated_vcf(args, isolated_cand_vars)
+    
+
+def get_candidate_variants(args):
+    """
+    """
+    cand_vars = []
+#    vcf_reader = vcf.Reader(filename=args.candidate_vcf, compressed=True)
+    vcf_reader = vcf.Reader(filename=args.somatic_vcf, compressed=True)
+    for record in vcf_reader:
+        cand_vars.append(record)
+    return cand_vars
+
+def get_all_isolated_variants(args):
+    """Assumes variants are sorted for now.
+    """
+    isolated_vars = []
+    germline_vcf_reader = vcf.Reader(filename=args.germline_vcf, compressed=True)
+    somatic_vcf_reader = vcf.Reader(filename=args.somatic_vcf, compressed=True)
+    all_records = []
+    for record_idx, record in enumerate(germline_vcf_reader):
+        all_records.append(record)
+    for record_idx, record in enumerate(somatic_vcf_reader):
+        all_records.append(record)
+    print("# of total variants: {}".format(len(all_records)))
+    for record_idx, record in enumerate(all_records[:-1]):
+        upstream_record = all_records[record_idx - 1]
+        downstream_record = all_records[record_idx + 1]
+        isolated_variant = False
+
+        upstream_isolated = False
+        downstream_isolated = False
+
+        if upstream_record.CHROM == record.CHROM:
+            if np.absolute(upstream_record.POS - record.POS) > args.proximity:
+                upstream_isolated = True
+        else:
+            upstream_isolated = True
+
+        if downstream_record.CHROM == record.CHROM:
+            if np.absolute(downstream_record.POS - record.POS) > args.proximity:
+                downstream_isolated = True
+        else:
+            downstream_isolated = True
+
+
+        if upstream_isolated and downstream_isolated:
+            isolated_vars.append(record)
+
+    return isolated_vars
+
 
 def main():
     args = get_args()
@@ -237,7 +329,9 @@ def main():
     if args.command == 'make-peptides':
         make_peptides(args)    
     if args.command == 'expressed-variants':
-        expressed_variants(args)    
+        expressed_variants(args)   
+    if args.command == 'isolated-variants':
+        isolated_variants(args) 
 
 if __name__=='__main__':
     main()
