@@ -43,7 +43,7 @@ process lenstools_filter_expressed_variants {
   val parstr
 
   output:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*.vcf"), emit: peptide_fastas
+  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*.vcf"), emit: expressed_vcf
 
   script:
   """
@@ -60,7 +60,7 @@ process lenstools_filter_isolated_variants {
   val parstr
 
   output:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*.vcf"), emit: peptide_fastas
+  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*.vcf"), emit: isolated_vcfs
 
   script:
   """
