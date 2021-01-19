@@ -31,8 +31,11 @@ def get_args():
     parser_make_peptides.add_argument('-l', '--length',
                                       help="Total peptide length.",
                                       default=8)
-    parser_make_peptides.add_argument('-o', '--output',
-                                      help="Output file name.",
+    parser_make_peptides.add_argument('-o', '--mt-output',
+                                      help="Mutant output file name.",
+                                      required=True)
+    parser_make_peptides.add_argument('-w', '--wt-output',
+                                      help="Wildtype peptides output file name.",
                                       required=True)
     
     # Subparser for generating indel peptides
@@ -74,7 +77,7 @@ def get_args():
                                       help="Output file name.",
                                       required=True)
     
-    # Subparser for filtering variants for expressin
+    # Subparser for filtering variants for expression
     parser_isolated_variants = subparsers.add_parser('isolated-variants',
                                                  help="Filter isolated variants.")
     parser_isolated_variants.add_argument('-g', '--germline-vcf',
@@ -92,6 +95,19 @@ def get_args():
     parser_isolated_variants.add_argument('-o', '--output',
                                           help="Output file name.",
                                           required=True)
+
+    # Subparser for calculalting agretopicity (mut BA/wt BA)
+    parser_calculate_agretopicity = subparsers.add_parser('calculate-agretopicity',
+                                                          help="Calcuate agreotopicity (mut BA/wt BA).")
+    parser_calculate_agretopicity.add_argument('-w', '--wt-fasta',
+                                               help="Wildtype peptide FASTA.",
+                                               required=True)
+    parser_calculate_agretopicity.add_argument('-m', '--mt-fasta',
+                                               help="Mutant peptide FASTA.",
+                                               required=True)
+    parser_calculate_agretopicity.add_argument('-o', '--output',
+                                               help="Output file name.",
+                                               required=True)
 
     return parser.parse_args()
 
@@ -115,6 +131,7 @@ def extract_potential_somatic_vars(args):
     #vcf_reader = vcf.Reader(open(args.vcf), 'r', compressed=True)
     vcf_reader = vcf.Reader(open(args.vcf), 'r')
     for record in vcf_reader:
+        print(record)
         possible_variants = [x for x in record.INFO['ANN']]
         for possible_variant in possible_variants:
             split_possible = possible_variant.split('|')
@@ -188,6 +205,7 @@ def make_peptides(args):
     print(tx_to_aa['ENST00000369529.1'])
     filtered_records = extract_potential_somatic_vars(args)
     emitted_peptides = {}
+    wildtype_peptides = {}
     for record in filtered_records:
         print(record)
         if record[0] in tx_to_aa.keys():
@@ -211,9 +229,13 @@ def make_peptides(args):
                 mut_peptide = ''.join(mut_seq[max(pos-8, 0):min(pos+8, len(mut_seq))])
                 print("{}\n{}\n{}".format(record[0],ref_peptide, mut_peptide))
                 emitted_peptides["{} {} {} {} {}".format(record[0], record[-1].CHROM, record[-1].POS, record[-1].REF, record[-1].ALT)] = mut_peptide
+                wildtype_peptides["{} {} {} {} {}".format(record[0], record[-1].CHROM, record[-1].POS, record[-1].REF, record[-1].ALT)] = ref_peptide
 
-    with open(args.output, 'w') as ofo:
+    with open(args.mt_output, 'w') as ofo:
         for k, v in emitted_peptides.items():
+            ofo.write('>{}\n{}\n'.format(k, v))
+    with open(args.wt_output, 'w') as ofo:
+        for k, v in wildtype_peptides.items():
             ofo.write('>{}\n{}\n'.format(k, v))
 
 def make_indel_peptides(args):
@@ -262,11 +284,11 @@ def expressed_variants(args):
     tx_abundances = load_tx_abundances(args)
     tx_threshold = get_tx_threshold(args, tx_abundances)
     expressed_txids = get_expressed_txs(args, tx_threshold)
-    print(tx_threshold)
-    print(len(expressed_txids))
-    print(expressed_txids[:10])
+    print("tx_thresshold: {}".format(tx_threshold))
+    print("# of expressed transcripts: {}".format(len(expressed_txids)))
+    print("Some expressed transcripts: {}".format(expressed_txids[:10]))
     filtered_records = filter_vcf_by_expression(args, expressed_txids)
-    print(len(filtered_records))
+    print("# of filtered transcripts: {}".format(len(filtered_records)))
     write_expressed_vcf(args, filtered_records)
 
 def load_tx_abundances(args):
@@ -285,12 +307,13 @@ def load_tx_abundances(args):
                     if j ==  args.metric:
                         count_column = i
             elif line_idx: 
-                count = float(line[count_column])
+                count = np.log2(float(line[count_column]) + 1)
                 if args.exclude_zeros:
                     if count> 0:
                        counts = np.append(counts, count)
                 else:
                     counts = np.append(counts, count)
+    print("Max count: {}".format(np.max(counts)))
 
     return counts
    
@@ -321,7 +344,7 @@ def get_expressed_txs(args, threshold):
             elif line_idx: 
                 count = float(line[count_column])
                 if count > threshold:
-                    expressed_txids.append(line[txid_column])
+                    expressed_txids.append(line[txid_column].split('.')[0])
     return expressed_txids
 
 def filter_vcf_by_expression(args, expressed_txids):
@@ -336,6 +359,7 @@ def filter_vcf_by_expression(args, expressed_txids):
             if split_possible[1] == 'missense_variant' and split_possible[13] and split_possible[-1] == '':
                 #Having to strip version off transcript for this.
                 transcript = split_possible[6].partition('.')[0]
+                print("Transcript: {}".format(transcript))
                 if transcript in expressed_txids:
                     filtered_records.append(record)
     return filtered_records
@@ -420,6 +444,50 @@ def get_all_isolated_variants(args):
 
     return isolated_vars
 
+def calculate_agretopicity(args):
+    """
+    """
+    
+    wt_nms = {}
+    with open(args.wt_fasta) as wto:
+        for line in wto.readlines():
+            line = line.rstrip('\n').split(' ')
+            line = [x for x in line if x]
+            if len(line) > 14 and line[0] not in ['Pos', 'Protein']:
+#                print(line)
+                k = "{}_{}_{}_{}".format(line[1], line[10], line[0], len(line[9]))
+#                print(k)
+                wt_nms[k] = line[15]
+    #print(wt_nms)
+
+    mts_w_agreto = []
+
+    header = ''
+
+    with open(args.mt_fasta) as mto:
+        for line in mto.readlines():
+            line = line.rstrip('\n').split(' ')
+            line = [x for x in line if x]
+            if len(line) > 14 and line[0] not in ['Pos', 'Protein']:
+                m = "{}_{}_{}_{}".format(line[1], line[10], line[0], len(line[9]))
+                result = line[:16]
+                if m in wt_nms.keys():
+                    print("{}\t{}\t{}\t{}".format(m, line[15], wt_nms[m], float(line[15])/float(wt_nms[m])))
+                    result.extend([wt_nms[m], str(float(line[15])/float(wt_nms[m]))])
+                else:
+                    result.extend(["NA", "NA"])
+                mts_w_agreto.append(','.join(result))
+            elif len(line) > 14 and line[0] == 'Pos':
+                print(header)
+                line.extend(['Wildtype Aff(nM)', 'Agretopocity'])
+                header = ','.join(line)
+
+    with open(args.output, 'w') as outf:
+        outf.write("{}\n".format(header))
+        for line in mts_w_agreto:
+            outf.write("{}\n".format(line))
+                
+
 
 def main():
     args = get_args()
@@ -432,6 +500,8 @@ def main():
         expressed_variants(args)   
     if args.command == 'isolated-variants':
         isolated_variants(args) 
+    if args.command == 'calculate-agretopicity':
+        calculate_agretopicity(args)
 
 if __name__=='__main__':
     main()
