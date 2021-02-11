@@ -228,8 +228,8 @@ def make_peptides(args):
                 ref_peptide = ''.join(tx_ref_seq[max(pos-8,0):min(pos+8, len(mut_seq))])
                 mut_peptide = ''.join(mut_seq[max(pos-8, 0):min(pos+8, len(mut_seq))])
                 print("{}\n{}\n{}".format(record[0],ref_peptide, mut_peptide))
-                emitted_peptides["{} {} {} {} {}".format(record[0], record[-1].CHROM, record[-1].POS, record[-1].REF, record[-1].ALT)] = mut_peptide
-                wildtype_peptides["{} {} {} {} {}".format(record[0], record[-1].CHROM, record[-1].POS, record[-1].REF, record[-1].ALT)] = ref_peptide
+                emitted_peptides["{}:{} {} {} {}".format(record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT)] = mut_peptide
+                wildtype_peptides["{}:{} {} {} {}".format(record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT)] = ref_peptide
 
     with open(args.mt_output, 'w') as ofo:
         for k, v in emitted_peptides.items():
@@ -486,7 +486,46 @@ def calculate_agretopicity(args):
         outf.write("{}\n".format(header))
         for line in mts_w_agreto:
             outf.write("{}\n".format(line))
-                
+
+
+
+def create_lens_report(args):
+    """
+    """
+    pass
+
+
+def add_metadata(args):
+    """
+    """
+    pos_to_tx_map = {}
+    with open(args.mt_aa) as mto:
+        for line in mto.readlines():
+            if line.startswith('>'):
+                line = line.split(' ')
+                pos_to_tx_map[line[0]] = line[1]
+    new_lines = []
+    with open(args.mut_nmp) as mno:
+        for line in mno.readlines():
+            line = line.split('\t')
+            print(line)
+#    with open(args.output) as ofo:
+
+
+def make_pyclone_iv_inputs(args):
+    """
+    This requires an isec vcf, a proper vcf (with depth info), and sequenza results info.
+    """
+    # This dictionary will be populated with normal and tumor depth information
+    # from the proper VCFs. It'll initially have keys populated by the isec VCF.
+    # vars[var]['var_depth'] =, vars[var]['ref_depth'] =, vars[var]['cn'] =
+    vars = {}
+
+    cand_vcf_reader = vcf.Reader(open(args.candidate_vcf), 'r')
+    for record in vcf_reader:
+        print(record)
+     
+    
 
 
 def main():

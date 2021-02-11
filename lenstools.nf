@@ -56,6 +56,7 @@ process lenstools_filter_expressed_variants {
   """
   AVCF=`echo ${vcf}`
   python ${params.project_dir}/workflow/lenstools/bin/lenstools.py expressed-variants ${parstr} -v ${vcf} -a ${quant} -o \${AVCF%.vcf*}.expfilt.vcf
+  sed -i 's/^#\\t/1\\t/g' \${AVCF%.vcf*}.expfilt.vcf
   """
 }
 
@@ -99,3 +100,23 @@ process lenstools_calculate_agretopicity {
   python ${params.project_dir}/workflow/lenstools/bin/lenstools.py calculate-agretopicity -w ${wt_nmp} -m ${mt_nmp} -o  \${MTNMP%.netmhcpan.txt}.agreto.netmhcpan.txt
   """
 }
+
+
+process lenstools_filter_peptides {
+
+  label "lenstools"
+  
+  input:
+  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(binding_affinities)
+
+  output:
+  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*filt_peps*"), emit: filtered_peptides
+
+  script:
+  """
+  BA_TMP=`echo ${binding_affinities}`
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py filter-peptides -i ${binding_affinities} -o  \${BA_TMP%.netmhcpan.txt}.agreto.netmhcpan.txt
+  """
+}
+
+
