@@ -634,6 +634,7 @@ def add_metadata(args):
             print(line)
 
     with open(args.output) as ofo:
+        pass
 
 
 def make_pyclone_vi_inputs(args):                                                                   
