@@ -10,6 +10,10 @@ from pprint import pprint
 import numpy as np
 from scipy import stats
 import csv
+import pysam
+import hashlib
+
+from pysam.libcalignmentfile import IteratorColumnRegion
 
 def get_args():
     """
@@ -70,10 +74,29 @@ def get_args():
     parser_expressed_variants.add_argument('-p', '--percentile',
                                            help="Percentile for determining expression.",
                                            default=50)
+    parser_expressed_variants.add_argument('-t', '--abundance-threshold',
+                                           help="abundance threshold.",
+                                           default=0)
     parser_expressed_variants.add_argument('-v', '--vcf',
                                       help="Annotated VCF).",
                                       required=True)
     parser_expressed_variants.add_argument('-o', '--output',
+                                      help="Output file name.",
+                                      required=True)
+    
+    # Subparser for filtering variants for having sufficient RNA coverage
+    parser_covered_variants = subparsers.add_parser('rna-covered-variants',
+                                                 help="Filter variants for RNA coverage.")
+    parser_covered_variants.add_argument('-b', '--rna-bam',
+                                           help="Transcript BAM file.",
+                                           required=True)
+    parser_covered_variants.add_argument('-c', '--required-coverage',
+                                           help="Required coverage for variant",
+                                           default=1)
+    parser_covered_variants.add_argument('-v', '--vcf',
+                                      help="Annotated VCF).",
+                                      required=True)
+    parser_covered_variants.add_argument('-o', '--output',
                                       help="Output file name.",
                                       required=True)
     
@@ -170,9 +193,10 @@ def extract_potential_somatic_indels(args):
     for record in vcf_reader:
         possible_variants = [x for x in record.INFO['ANN']]
         for possible_variant in possible_variants:
+            print(possible_variant)
 #            if re.search("\|conserative_inframe_insertion\|", possible_variant) or re.search("\|conserative_inframe_deletion\|", possible_variant):
             split_possible = possible_variant.split('|')
-            if re.search('^conservative_inframe_[a-z]+$', split_possible[1]) and split_possible[13] and split_possible[-1] == '':
+            if re.search('^conservative_inframe_[a-z]+$', split_possible[1]) and split_possible[13]:# and split_possible[-1] == '':
                 print(split_possible)
 #                transcript = split_possible[6].split('.')[0]
                 transcript = split_possible[6]
@@ -202,7 +226,6 @@ def make_peptides(args):
     """
     """
     tx_to_aa = load_tx_aas(args)
-    print(tx_to_aa['ENST00000369529.1'])
     filtered_records = extract_potential_somatic_vars(args)
     emitted_peptides = {}
     wildtype_peptides = {}
@@ -228,8 +251,9 @@ def make_peptides(args):
                 ref_peptide = ''.join(tx_ref_seq[max(pos-8,0):min(pos+8, len(mut_seq))])
                 mut_peptide = ''.join(mut_seq[max(pos-8, 0):min(pos+8, len(mut_seq))])
                 print("{}\n{}\n{}".format(record[0],ref_peptide, mut_peptide))
-                emitted_peptides["{}:{} {} {} {}".format(record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT)] = mut_peptide
-                wildtype_peptides["{}:{} {} {} {}".format(record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT)] = ref_peptide
+                var_md5sum = hashlib.md5("{}".format(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)]))).hexdigest()[:16]
+                emitted_peptides["{} {}:{} {} {} {}".format(var_md5sum, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT)] = mut_peptide
+                wildtype_peptides["{} {}:{} {} {} {}".format(var_md5sum, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT)] = ref_peptide
 
     with open(args.mt_output, 'w') as ofo:
         for k, v in emitted_peptides.items():
@@ -242,7 +266,7 @@ def make_indel_peptides(args):
     """
     """
     tx_to_aa = load_tx_aas(args)
-    print(tx_to_aa['ENST00000369529.1'])
+#    print(tx_to_aa['ENST00000369529.1'])
     filtered_records = extract_potential_somatic_indels(args)
     emitted_peptides = {}
     for record in filtered_records:
@@ -272,17 +296,102 @@ def make_indel_peptides(args):
                     ref_peptide = ''.join(tx_ref_seq[max(start_pos-8,0):min(stop_pos+8, len(mut_seq))])
                     mut_peptide = ''.join(new_mut_seq[max(start_pos-8, 0):min(start_pos+8, len(new_mut_seq))])
                     print("{}\n{}\n{}".format(record[0],ref_peptide, mut_peptide))
-                    emitted_peptides["{} {} {} {} {}".format(record[0], record[-1].CHROM, record[-1].POS, record[-1].REF, record[-1].ALT)] = mut_peptide
+                  #  emitted_peptides["{} {} {} {} {}".format(record[0], record[-1].CHROM, record[-1].POS, record[-1].REF, record[-1].ALT)] = mut_peptide
+                    var_md5sum = hashlib.md5("{}".format(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)]))).hexdigest()[:16]
+                    emitted_peptides["{} {}:{} {} {} {}".format(var_md5sum, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT)] = mut_peptide
 
     with open(args.output, 'w') as ofo:
         for k, v in emitted_peptides.items():
             ofo.write('>{}\n{}\n'.format(k, v))
 
+
+def rna_covered_variants(args):
+    """
+    """
+    filtered_chrom_pos = []
+    filtered_vcf = []
+    rna_bam = pysam.AlignmentFile(args.rna_bam, "rb")
+    vcf_reader = vcf.Reader(filename=args.vcf, compressed=False)
+    for record in vcf_reader:
+        possible_variants = [x for x in record.INFO['ANN']]
+        for possible_variant in possible_variants:
+            split_possible = possible_variant.split('|')
+            #Currently filtering for only missense. Need to fix this.
+            if split_possible[1] == 'missense_variant' and split_possible[13]:# and split_possible[-1] == '':
+                transcript = split_possible[6].partition('.')[0]
+                var_chr_pos = "{}:{}".format(record.CHROM, record.POS)
+                coverage = len([str(i) for i in pileup_truncated(rna_bam, record.CHROM, record.POS - 1, record.POS)])
+                if coverage > 0:
+                    pos, total_depth, var_depth = [[i.reference_pos + 1, i.get_num_aligned(), ''.join(i.get_query_sequences()).upper().count(str(record.ALT[0]))] for i in pileup_truncated(rna_bam, record.CHROM, record.POS - 1, record.POS)][0]
+                    if int(var_depth) > int(args.required_coverage):
+                        filtered_chrom_pos.append([record.chrom, record.pos])
+            elif re.search('conservative_inframe_deletion', split_possible[1]):
+                print(possible_variant)
+                transcript = split_possible[6].partition('.')[0]
+                var_chr_pos = "{}:{}".format(record.CHROM, record.POS)
+                print(record.ALT[0])
+                reads = [i.get_overlap(record.POS - 1, record.POS + len(record.REF) - 1) for i in rna_bam.fetch(record.CHROM, record.POS - 1, record.POS + len(record.REF) - 1)]
+                overlap = [i.get_overlap(record.POS - 1, record.POS + len(record.REF) - 1) for i in rna_bam.fetch(record.CHROM, record.POS - 1, record.POS + len(record.REF) - 1)]
+                total_depth = len(reads)
+                # This isn't specific enough, need to be searching for specific start and length.
+#                var_depth = [x for x in reads if not(re.search(str(record.REF), x))].count(str(len(record.ALT[0])))
+#                ref_depth = [x for x in reads if re.search(str(record.REF), x)].count(str(len(record.REF)))
+                var_depth = overlap.count(len(record.ALT[0]))
+                ref_depth = overlap.count(len(record.REF))
+                print(overlap)
+                if int(var_depth) > int(args.required_coverage):
+                    filtered_chrom_pos.append([record.chrom, record.pos])
+            elif re.search('conservative_inframe_insertion', split_possible[1]):
+                print(possible_variant)
+                transcript = split_possible[6].partition('.')[0]
+                var_chr_pos = "{}:{}".format(record.CHROM, record.POS)
+                print(record.ALT[0])
+#                reads = [i.get_overlap(record.POS - 1, record.POS + len(record.REF) - 1) for i in rna_bam.fetch(record.CHROM, record.POS - 1, record.POS + len(record.REF) - 1)]
+                overlap = [i.get_overlap(record.POS - 1, record.POS + len(record.ALT[0]) - 1) for i in rna_bam.fetch(record.CHROM, record.POS - 1, record.POS + len(record.ALT[0]) - 1)]
+                # This isn't specific enough, need to be searching for specific start and length.
+#                var_depth = [x for x in reads if not(re.search(str(record.REF), x))].count(str(len(record.ALT[0])))
+#                ref_depth = [x for x in reads if re.search(str(record.REF), x)].count(str(len(record.REF)))
+                var_depth = overlap.count(len(record.ALT[0]))
+                ref_depth = overlap.count(len(record.REF))
+                print(overlap)
+                if int(var_depth) > int(args.required_coverage):
+                    filtered_chrom_pos.append([record.chrom, record.pos])
+    
+    vcf_reader = vcf.Reader(filename=args.vcf, compressed=False)
+    for record in vcf_reader:
+        if [record.CHROM, record.POS] in filtered_chrom_pos:
+            filtered_vcf.append(record)
+
+    print(len(filtered_vcf))
+    
+    vcf_writer = vcf.Writer(open(args.output, 'w'), vcf_reader)
+    for filtered_record in filtered_vcf:
+        vcf_writer.write_record(filtered_record)
+        
+
+
+def pileup_truncated(bam,contig, start, stop):
+    """
+    Taken from: https://github.com/pysam-developers/pysam/issues/851#issuecomment-585990105
+    Obtain Pysam columns only at selected region
+    """
+    has_coord, rtid, rstart, rstop = bam.parse_region(contig, start, stop)
+    for i in IteratorColumnRegion(bam, tid=rtid, start=rstart, stop=rstop,truncate=True):
+        yield i
+#    yield from IteratorColumnRegion(bam,
+#                                    tid=rtid,
+#                                    start=rstart,
+#                                    stop=rstop,truncate=True)
+
 def expressed_variants(args):
     """
     """
     tx_abundances = load_tx_abundances(args)
-    tx_threshold = get_tx_threshold(args, tx_abundances)
+    tx_threhsold = 0
+    if not(args.abundance_threshold):
+        tx_threshold = get_tx_threshold(args, tx_abundances)
+    else:
+        tx_threshold = float(args.abundance_threshold)
     expressed_txids = get_expressed_txs(args, tx_threshold)
     print("tx_thresshold: {}".format(tx_threshold))
     print("# of expressed transcripts: {}".format(len(expressed_txids)))
@@ -343,7 +452,8 @@ def get_expressed_txs(args, threshold):
                         txid_column = i
             elif line_idx: 
                 count = float(line[count_column])
-                if count > threshold:
+                print("{} {}".format(count, threshold))
+                if float(count) > float(threshold):
                     expressed_txids.append(line[txid_column].split('.')[0])
     return expressed_txids
 
@@ -537,6 +647,8 @@ def main():
         make_indel_peptides(args)    
     if args.command == 'expressed-variants':
         expressed_variants(args)   
+    if args.command == 'rna-covered-variants':
+        rna_covered_variants(args)   
     if args.command == 'isolated-variants':
         isolated_variants(args) 
     if args.command == 'calculate-agretopicity':
