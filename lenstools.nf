@@ -3,7 +3,7 @@
 process lenstools_make_peptides {
 
   label "lenstools"
-  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy'
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
 
   input:
   tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(vcf)
@@ -24,7 +24,8 @@ process lenstools_make_peptides {
 process lenstools_make_indel_peptides {
 
   label "lenstools"
-  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy'
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  cache false
 
   input:
   tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(vcf)
@@ -55,7 +56,8 @@ process lenstools_filter_expressed_variants {
   script:
   """
   AVCF=`echo ${vcf}`
-  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py expressed-variants ${parstr} -v ${vcf} -a ${quant} -o \${AVCF%.vcf*}.expfilt.vcf
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py expressed-variants ${parstr} -v ${vcf} -a ${quant} -o \${AVCF%.vcf*}.expfilt.vcf --abundance-threshold 32.9
+  #python ${params.project_dir}/workflow/lenstools/bin/lenstools.py expressed-variants ${parstr} -v ${vcf} -a ${quant} -o \${AVCF%.vcf*}.expfilt.vcf
   sed -i 's/^#\\t/1\\t/g' \${AVCF%.vcf*}.expfilt.vcf
   """
 }
@@ -64,7 +66,8 @@ process lenstools_filter_expressed_variants {
 process lenstools_filter_isolated_variants {
 
   label "lenstools"
-  conda 'bioconda::pyvcf bioconda::biopython anaconda::scipy'
+  tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
 
   input:
   tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(somatic_vcf), path(germline_vcf)
@@ -86,7 +89,7 @@ process lenstools_filter_isolated_variants {
 process lenstools_calculate_agretopicity {
 
   label "lenstools"
-  conda 'bioconda::pyvcf bioconda::biopython anaconda::scipy'
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
 
   input:
   tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(wt_nmp), path(mt_nmp)
@@ -119,4 +122,40 @@ process lenstools_filter_peptides {
   """
 }
 
+process lenstools_rna_covered_variants {
 
+  label "lenstools"
+  tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  cache false
+  
+  input:
+  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(isec_vcf), path(rna_bam), path(rna_bai)
+
+  output:
+  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*rna_cov.vcf*"), emit: rna_cov_vcfs
+
+  script:
+  """
+  AVCF=\$(echo ${isec_vcf})
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py rna-covered-variants -v ${isec_vcf} -b ${rna_bam} -o  \${AVCF%.vcf}.rna_cov.vcf
+  """
+}
+
+process lenstools_make_pyclonevi_inputs {                                                           
+                                                                                                    
+  label "lenstools"                                                                                 
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy'                       
+                                                                                                    
+  input:                                                                                            
+  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(candidate_vcf), path(mutect_vcf), path(sequenza_segments)
+  val parstr                                                                                        
+                                                                                                    
+  output:                                                                                           
+  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*pcvi_input"), emit: pcvi_inputs
+                                                                                                    
+  script:                                                                                           
+  """                                                                                               
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py make-pyclone-vi-inputs -c ${candidate_vcf} -m ${mutect_vcf} -s ${sequenza_segments} --samp-id ${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix} -o ${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix}.pcvi_input
+  """                                                                                               
+} 
