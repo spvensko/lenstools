@@ -145,7 +145,7 @@ process lenstools_rna_covered_variants {
 process lenstools_make_pyclonevi_inputs {                                                           
                                                                                                     
   label "lenstools"                                                                                 
-  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy'                       
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
                                                                                                     
   input:                                                                                            
   tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(candidate_vcf), path(mutect_vcf), path(sequenza_segments)
