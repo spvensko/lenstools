@@ -131,6 +131,41 @@ def get_args():
     parser_calculate_agretopicity.add_argument('-o', '--output',
                                                help="Output file name.",
                                                required=True)
+    
+    # Subparser for creating PyClone-VI inputs
+    parser_make_pvi_inputs = subparsers.add_parser('make-pyclone-vi-inputs',
+                                                          help="Calcuate agreotopicity (mut BA/wt BA).")
+    parser_make_pvi_inputs.add_argument('-c', '--candidate-vcf',
+                                        help="VCF containing candidate variants.",
+                                        required=True)
+    parser_make_pvi_inputs.add_argument('-m', '--mutect-vcf',
+                                        help="Mutect VCF for variant depth information.",
+                                        required=True)
+    parser_make_pvi_inputs.add_argument('-s', '--sequenza-segments',
+                                        help="Sequenza segments file.",
+                                        required=True)
+    parser_make_pvi_inputs.add_argument('--sequenza-solutions',
+                                        help="Sequenza solutions file.",
+                                        required=True)
+    parser_make_pvi_inputs.add_argument('--samp-id', required=True)
+    parser_make_pvi_inputs.add_argument('-o', '--output', required=True)
+    
+    # Subparser for adding SNV metadata
+    parser_add_snv_metadata = subparsers.add_parser('add-snv-metadata',
+                                                   help="Add metadata to snv netmhcpan output")
+    parser_add_snv_metadata.add_argument('-m', '--mutant-peptides',
+                                        help="FASTA file with mutant peptides.",
+                                        required=True)
+    parser_add_snv_metadata.add_argument('-q', '--quants',
+                                        help="Quant file.",
+                                        required=True)
+    parser_add_snv_metadata.add_argument('-c', '--cancer-cell-fraction',
+                                        help="Cancer cell fraction file.",
+                                        required=True)
+    parser_add_snv_metadata.add_argument('-g', '--gtf')
+    parser_add_snv_metadata.add_argument('-n', '--netmhcpan')
+    parser_add_snv_metadata.add_argument('-o', '--output', required=True)
+
 
     return parser.parse_args()
 
@@ -605,122 +640,182 @@ def create_lens_report(args):
     pass
 
 
-def add_metadata(args):
-    """
-    """
-    checksum_to_meta_map = {}
-    with open(args.mt_aa) as mto:
-        for line in mto.readlines():
-            if line.startswith('>'):
-                line = line.split(' ')
-                checksum_to_meta_map[line[0]] = line[1]
-
-    tx_to_tpm = {}
-    with open(args.quant_file) as qfo:
-        tpm_col_idx = ''
-        tx_col_idx = ''
-        for line_idx, line in qfo.readlines():
-            if line_idx == 0:
-                tpm_col_idx = line.split('\t').index('TPM')
-                tx_col_idx = line.split('\t').index('Name')
-            else:     
-                line = line.split(' ')
-                tx_to_tpm[line[tx_col_idx]] = line[tpm_col_idx]
-
-    new_lines = []
-    with open(args.mut_nmp) as mno:
-        for line in mno.readlines():
-            line = line.split('\t')
-            print(line)
-
-    with open(args.output) as ofo:
-        pass
-
-
-def make_pyclone_vi_inputs(args):                                                                   
+def add_snv_metadata(args):                                                                             
     """                                                                                             
-    This requires an isec vcf, a proper vcf (with depth info), and sequenza results info.           
     """                                                                                             
-    # This dictionary will be populated with normal and tumor depth information                     
-    # from the proper VCFs. It'll initially have keys populated by the isec VCF.                    
-    # vars[var]['var_depth'] =, vars[var]['ref_depth'] =, vars[var]['cn'] =                         
-    vars = {}                                                                                       
+    checksum_to_meta_map = {}                                                                       
+    with open(args.mutant_peptides) as mto:                                                                   
+        for line in mto.readlines():                                                                
+            if line.startswith('>'):                                                                
+                line = line.rstrip().split(' ') 
+                print(line)           
+                checksum = line[0].lstrip('>')[:-1] 
+                print(checksum)                                       
+                var_pos = line[1]
+                tx_id = line[2].split('.')[0]
+                ref = line[3]
+                alt = line[4] 
+                checksum_to_meta_map[checksum] = {}
+                checksum_to_meta_map[checksum]["var_pos"] = var_pos
+                checksum_to_meta_map[checksum]["tx_id"] = tx_id
+                checksum_to_meta_map[checksum]["ref"] = ref
+                checksum_to_meta_map[checksum]["alt"] = alt
                                                                                                     
-                                                                                                    
-    with open(args.candidate_vcf) as cvo:                                                           
-        for line in cvo.readlines():                                                                
-            if line.startswith('#'):                                                                
-                pass                                                                                
-            else:                                                                                   
-                line = line.rstrip().split('\t')                                                    
-                if len(line[3]) == 1 and len(line[4]) == 1:                                         
-                    line = [i for i in line if i != '.']                                            
-                    vars['{}'.format('_'.join(line[:2]))] = {}                                      
-                    vars['{}'.format('_'.join(line[:2]))]['ref_depth'] = 0                          
-                    vars['{}'.format('_'.join(line[:2]))]['alt_depth'] = 0                          
-                    vars['{}'.format('_'.join(line[:2]))]['major_cn'] = 0                           
-                    vars['{}'.format('_'.join(line[:2]))]['minor_cn'] = 0                           
-    print("Candidate variant count: {}".format(len(vars)))                                          
-    #Note: not all variants may not be in depth VCF. This can be fixed later.                       
-                                                                                                    
-                                                                                                    
-    mutect_vcf_reader = vcf.Reader(open(args.mutect_vcf), compressed=False)                         
-    depths = {}                                                                                     
-    for record in mutect_vcf_reader:                                                                
-        call = record.genotype('tum')                                                               
-        var_key = "{}_{}".format(record.CHROM, record.POS)                                          
-        depths[var_key] = {}                                                                        
-        depths[var_key]["ref_depth"] = call.data.AD[0]                                              
-        depths[var_key]["alt_depth"] = call.data.AD[1]            
-     
-    
-                                                                                                    
-    copy_no = {}                                                                                    
-    with open(args.sequenza_segments) as sfo:                                                       
-        for line_idx, line in enumerate(sfo.readlines()):                                           
+    tx_to_tpm = {}                                                                                  
+    with open(args.quants) as qfo:                                                              
+        tpm_col_idx = ''                                                                            
+        tx_col_idx = ''                                                                             
+        for line_idx, line in enumerate(qfo.readlines()):
             if line_idx == 0:                                                                       
-                continue                                                                            
-            line = line.split('\t')                                                                 
+                tpm_col_idx = line.split('\t').index('TPM')                                         
+                tx_col_idx = line.split('\t').index('Name')                                         
+            else:                                                                                   
+                line = line.split('\t')                                                              
+                tx_to_tpm[line[tx_col_idx].split('.')[0]] = line[tpm_col_idx]
+
+    tx_to_gene = {}
+    with open(args.gtf) as gtfo:
+        for line in gtfo.readlines():
+            line = line.split('\t')
+            if len(line) > 3 and line[2] == 'transcript':
+                gene_name = str(line).split('gene_name "')[1].split('"')[0] 
+                tx_id = str(line).split('transcript_id "')[1].split('"')[0] 
+                tx_to_gene[tx_id] = gene_name
+            
+    print(tx_to_gene.keys())     
+                                                                                                    
+    new_lines = []                                                                                  
+    with open(args.netmhcpan) as mno:                                                                 
+        for line in mno.readlines():                                                               
+            line = line.rstrip() 
+            line = line.split()
+            if len(line) < 16:
+                continue
+            if line[10] not in checksum_to_meta_map.keys():
+                continue
+            print(line)                                                                             
+            csum = line[10]
+            tx_id = checksum_to_meta_map[csum]['tx_id']
+            gene_name = tx_to_gene[tx_id]
+            var_pos = checksum_to_meta_map[csum]['var_pos']
+            ref = checksum_to_meta_map[csum]['ref']
+            alt = checksum_to_meta_map[csum]['alt']
+            tpm = tx_to_tpm[tx_id]
+            if 'SB' in line:
+                line.remove('<=')
+                line.remove('SB')
+            if 'WB' in line:
+                line.remove('WB')
+            line.extend([gene_name, tx_id, var_pos, ref, alt, tpm])
+            new_lines.append(line)
+
+    with open(args.output, 'w') as ofo:
+        for new_line in new_lines:
+            ofo.write("{}\n".format('\t'.join(new_line)))
+        
+
+def make_pyclone_vi_inputs(args):
+    """
+    This requires an isec vcf, a proper vcf (with depth info), and sequenza results info.
+    """
+    # This dictionary will be populated with normal and tumor depth information
+    # from the proper VCFs. It'll initially have keys populated by the isec VCF.
+    # vars[var]['var_depth'] =, vars[var]['ref_depth'] =, vars[var]['cn'] =
+    vars = {}
+
+    cellularity = 0
+    with open(args.sequenza_solutions) as sso:
+        for line_idx, line in enumerate(sso.readlines()):
+            if line_idx == 1:
+                line = line.split('\t')
+                cellularity = line[0]
+
+
+    with open(args.candidate_vcf) as cvo:
+        for line in cvo.readlines():
+            if line.startswith('#'):
+                pass
+            else:
+                line = line.rstrip().split('\t')
+                if len(line[3]) == 1 and len(line[4]) == 1:
+                    line = [i for i in line if i != '.']
+                    vars['{}'.format('_'.join(line[:2]))] = {}
+                    vars['{}'.format('_'.join(line[:2]))]['ref_depth'] = 0
+                    vars['{}'.format('_'.join(line[:2]))]['alt_depth'] = 0
+                    vars['{}'.format('_'.join(line[:2]))]['major_cn'] = 0
+                    vars['{}'.format('_'.join(line[:2]))]['minor_cn'] = 0
+    print("Candidate variant count: {}".format(len(vars)))
+    #Note: not all variants may not be in depth VCF. This can be fixed later.
+
+
+    mutect_vcf_reader = vcf.Reader(open(args.mutect_vcf), compressed=False)
+    depths = {}
+    for record in mutect_vcf_reader:
+        call = record.genotype('tum')
+        var_key = "{}_{}".format(record.CHROM, record.POS)
+        depths[var_key] = {}
+        depths[var_key]["ref_depth"] = call.data.AD[0]
+        depths[var_key]["alt_depth"] = call.data.AD[1]
+
+    copy_no = {}
+    with open(args.sequenza_segments) as sfo:
+        for line_idx, line in enumerate(sfo.readlines()):
+            if line_idx == 0:
+                continue
+            line = line.split('\t')
             chr, start, stop, maj_count, min_count = [line[0], line[1], line[2], line[10], line[11]]
-            print("{}".format(','.join([chr, start, stop, maj_count, min_count])))                  
-            if chr not in copy_no.keys():                                                           
-                copy_no[chr] = {}                                                                   
-            if "{}-{}".format(start, stop) not in copy_no[chr].keys():                              
-                copy_no[chr]["{}-{}".format(start, stop)] = {}                                      
-            copy_no[chr]["{}-{}".format(start, stop)]["maj_count"] = maj_count                      
-            copy_no[chr]["{}-{}".format(start, stop)]["min_count"] = min_count                      
-                                                                                                    
-    easily_parsable = []                                                                            
-                                                                                                    
-    for var in vars.keys():                                                                         
-        print(var)                                                                                  
-        chr, pos = var.split('_')                                                                   
-        if var in depths.keys():                                                                    
-            easily_parsable.append([chr, pos])                                                      
-                                                                                                    
-#    print(easily_parsable)                                                                         
-                                                                                                    
-    pyclone_inp = []                                                                                
-                                                                                                    
-    for chr in copy_no.keys():                                                                      
-        print(chr)                                                                                  
-        chr_vars = sorted([x for x in easily_parsable if x[0] == chr], key=lambda x: x[1])          
-        print(len(chr_vars))                                                                        
-        for segment in sorted(copy_no[chr].keys(), key=lambda segment: int(segment.split('-')[0])): 
-            print("SEGMENT: {}".format(segment))                                                    
-            start, stop = segment.split('-')                                                        
+            print("{}".format(','.join([chr, start, stop, maj_count, min_count])))
+            if chr not in copy_no.keys():
+                copy_no[chr] = {}
+            if "{}-{}".format(start, stop) not in copy_no[chr].keys():
+                copy_no[chr]["{}-{}".format(start, stop)] = {}
+            copy_no[chr]["{}-{}".format(start, stop)]["maj_count"] = maj_count 
+            copy_no[chr]["{}-{}".format(start, stop)]["min_count"] = min_count 
+
+    easily_parsable = []
+     
+    for var in vars.keys():
+        print(var)
+        chr, pos = var.split('_')
+        if var in depths.keys():
+            easily_parsable.append([chr, pos])
+
+#    print(easily_parsable)
+
+    pyclone_inp = []
+
+    for chr in copy_no.keys():
+        print(chr)
+        chr_vars = sorted([x for x in easily_parsable if x[0] == chr], key=lambda x: x[1])
+        print(len(chr_vars))
+        for segment in sorted(copy_no[chr].keys(), key=lambda segment: int(segment.split('-')[0])):
+            print("SEGMENT: {}".format(segment))
+            start, stop = segment.split('-')
             segment_vars = sorted([x for x in chr_vars if int(x[1]) > int(start) and int(x[1]) < int(stop)], key=lambda x: int(x[1]))
-            print(segment_vars)                                                                     
-            for segment_var in segment_vars:                                  
-                var = "{}_{}".format(segment_var[0], segment_var[1])                                
-                ref_depth = str(depths[var]['ref_depth'])                                           
-                alt_depth = str(depths[var]['alt_depth'])                                           
-#                depths[var]['major_cn'] = str(copy_no[chr][segment]["maj_count"])                  
-#                depths[var]['minor_cn'] = str(copy_no[chr][segment]["min_count"])                  
-                ref_cn = str(copy_no[chr][segment]["maj_count"])                                    
-                alt_cn = str(copy_no[chr][segment]["min_count"])                                    
-                var = var.replace('_', ':')                                                         
-                pyclone_inp.append("{}\n".format('\t'.join([var, args.samp_id, ref_depth, alt_depth, ref_cn, alt_cn, '2', '0.001'])))
+            print(segment_vars)
+            for segment_var in segment_vars:
+                var = "{}_{}".format(segment_var[0], segment_var[1])
+                ref_depth = str(depths[var]['ref_depth'])
+                alt_depth = str(depths[var]['alt_depth'])
+#                depths[var]['major_cn'] = str(copy_no[chr][segment]["maj_count"]) 
+#                depths[var]['minor_cn'] = str(copy_no[chr][segment]["min_count"]) 
+                ref_cn = str(copy_no[chr][segment]["maj_count"])
+                alt_cn = str(copy_no[chr][segment]["min_count"])
+                var = var.replace('_', ':')
+                pyclone_inp.append("{}\n".format('\t'.join([var, args.samp_id, ref_depth, alt_depth, ref_cn, alt_cn, '2', '0.001', cellularity])))
+
+
+
+
+#    print(pyclone_inp)
+    with open(args.output, 'w') as ofo:
+        ofo.write("mutation_id\tsample_id\tref_counts\talt_counts\tmajor_cn\tminor_cn\tnormal_cn\terror_rate\ttumour_content\n")
+        for i in pyclone_inp:
+            ofo.write(i)
+                
+         
+            
+         
 
 def main():
     args = get_args()
@@ -737,8 +832,10 @@ def main():
         isolated_variants(args) 
     if args.command == 'calculate-agretopicity':
         calculate_agretopicity(args)
-    if args.command == 'make-pyclone-vi-inputs':                                                    
+    if args.command == 'make-pyclone-vi-inputs':
         make_pyclone_vi_inputs(args)
+    if args.command == 'add-snv-metadata':
+        add_snv_metadata(args)
 
 if __name__=='__main__':
     main()
