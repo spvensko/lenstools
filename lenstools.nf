@@ -4,15 +4,19 @@ process lenstools_make_peptides {
 
   label "lenstools"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
 
   input:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(vcf)
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path(vcf)
   path tx_aa
 
   output:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*.mt_aa.fa"), emit: mutant_fastas
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*.wt_aa.fa"), emit: wildtype_fastas
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*.wt_aa.fa"), path("*.mt_aa.fa"), emit: peptide_fastas
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path("*.mt_aa.fa"), emit: mutant_fastas
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path("*.wt_aa.fa"), emit: wildtype_fastas
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path("*.wt_aa.fa"), path("*.mt_aa.fa"), emit: peptide_fastas
+//  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*.mt_aa.fa"), emit: mutant_fastas
+//  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*.wt_aa.fa"), emit: wildtype_fastas
+//  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*.wt_aa.fa"), path("*.mt_aa.fa"), emit: peptide_fastas
 
   script:
   """
@@ -25,14 +29,15 @@ process lenstools_make_indel_peptides {
 
   label "lenstools"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
   cache false
 
   input:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(vcf)
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path(vcf)
   path tx_aa
 
   output:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*.aa.fa"), emit: peptide_fastas
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path("*.aa.fa"), emit: peptide_fastas
 
   script:
   """
@@ -45,13 +50,14 @@ process lenstools_filter_expressed_variants {
 
   label "lenstools"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
 
   input:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(vcf), path(quant)
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path(vcf), path(quant)
   val parstr
 
   output:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*.vcf"), emit: expressed_vcfs
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path("*.vcf"), emit: expressed_vcfs
 
   script:
   """
@@ -66,15 +72,15 @@ process lenstools_filter_expressed_variants {
 process lenstools_filter_isolated_variants {
 
   label "lenstools"
-  tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
 
   input:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(somatic_vcf), path(germline_vcf)
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path(somatic_vcf), path(germline_vcf)
   val parstr
 
   output:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*.vcf"), emit: isolated_vcfs
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path("*.vcf"), emit: isolated_vcfs
 
   script:
   """
@@ -90,12 +96,13 @@ process lenstools_calculate_agretopicity {
 
   label "lenstools"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
 
   input:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(wt_nmp), path(mt_nmp)
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path(wt_nmp), path(mt_nmp)
 
   output:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*agreto.netmhcpan.txt"), emit: agreto_netmhcpans
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path("*agreto.netmhcpan.txt"), emit: agreto_netmhcpans
 
   script:
   """
@@ -109,12 +116,13 @@ process lenstools_filter_peptides {
 
   label "lenstools"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy'
+  tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
   
   input:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(binding_affinities)
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path(binding_affinities)
 
   output:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*filt_peps*"), emit: filtered_peptides
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path("*filt_peps*"), emit: filtered_peptides
 
   script:
   """
@@ -126,15 +134,15 @@ process lenstools_filter_peptides {
 process lenstools_rna_covered_variants {
 
   label "lenstools"
-  tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
   cache false
   
   input:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(isec_vcf), path(rna_bam), path(rna_bai)
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path(isec_vcf), path(rna_bam), path(rna_bai)
 
   output:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*rna_cov.vcf*"), emit: rna_cov_vcfs
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path("*rna_cov.vcf*"), emit: rna_cov_vcfs
 
   script:
   """
@@ -147,14 +155,15 @@ process lenstools_make_pyclonevi_inputs {
 
   label "lenstools"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
   cache false
 
   input:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path(candidate_vcf), path(mutect_vcf), path(sequenza_segments), path(sequenza_solutions)
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path(candidate_vcf), path(mutect_vcf), path(sequenza_segments), path(sequenza_solutions)
   val parstr
 
   output:
-  tuple val(pat_name), val(dataset), val(norm_prefix), val(tumor_prefix), path("*pcvi_input"), emit: pcvi_inputs
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path("*pcvi_input"), emit: pcvi_inputs
 
   script:
   """
