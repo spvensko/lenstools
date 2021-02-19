@@ -170,3 +170,24 @@ process lenstools_make_pyclonevi_inputs {
   python ${params.project_dir}/workflow/lenstools/bin/lenstools.py make-pyclone-vi-inputs -c ${candidate_vcf} -m ${mutect_vcf} -s ${sequenza_segments} --samp-id ${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix} --sequenza-solutions ${sequenza_solutions} -o ${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix}.pcvi_input
   """
 }
+
+process lenstools_add_snv_metadata {
+
+  label "lenstools"
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
+  cache false
+
+  input:
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path(netmhcpan_input), path(mutant_fasta), path(quants), path(pcvi)
+  path gtf
+  val parstr
+
+  output:
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path("*pcvi_input"), emit: pcvi_inputs
+
+  script:
+  """
+  #python #{params.project_dir}/workflow/lenstools/bin/lenstools.py add-snv-metadata -n SRR3083871-Pt7-SRR3083870_HugoLo_IPRES_2016.snvs.mt_aa.fa.netmhcpan.txt -m SRR3083871-Pt7-SRR3083870_HugoLo_IPRES_2016.snvs.mt_aa.fa -q quant.sf -c SRR3083871-Pt7-SRR3083870_HugoLo_IPRES_2016.pcvi_input.results -g ../../../references/Homo_sapiens.GRCh38.100.gtf  -o foo
+  """
+}
