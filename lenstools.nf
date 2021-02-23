@@ -30,7 +30,6 @@ process lenstools_make_indel_peptides {
   label "lenstools"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
   tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
-  cache false
 
   input:
   tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path(vcf)
@@ -117,7 +116,7 @@ process lenstools_filter_peptides {
   label "lenstools"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy'
   tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
-  
+
   input:
   tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path(binding_affinities)
 
@@ -136,8 +135,7 @@ process lenstools_rna_covered_variants {
   label "lenstools"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
   tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
-  cache false
-  
+
   input:
   tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path(isec_vcf), path(rna_bam), path(rna_bai)
 
@@ -175,19 +173,40 @@ process lenstools_add_snv_metadata {
 
   label "lenstools"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
-  tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
+  tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}_${rna_prefix}"
   cache false
 
   input:
-  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path(netmhcpan_input), path(mutant_fasta), path(quants), path(pcvi)
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(rna_prefix), val(dataset), path(netmhcpan_input), path(mutant_fasta), path(pcvi), path(quants)
   path gtf
   val parstr
 
   output:
-  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path("*pcvi_input"), emit: pcvi_inputs
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(rna_prefix), val(dataset), path("*metadata.txt"), emit: metadatas
 
   script:
   """
-  #python #{params.project_dir}/workflow/lenstools/bin/lenstools.py add-snv-metadata -n SRR3083871-Pt7-SRR3083870_HugoLo_IPRES_2016.snvs.mt_aa.fa.netmhcpan.txt -m SRR3083871-Pt7-SRR3083870_HugoLo_IPRES_2016.snvs.mt_aa.fa -q quant.sf -c SRR3083871-Pt7-SRR3083870_HugoLo_IPRES_2016.pcvi_input.results -g ../../../references/Homo_sapiens.GRCh38.100.gtf  -o foo
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py add-snv-metadata -n ${netmhcpan_input} -m ${mutant_fasta} -q ${quants} -g ${gtf} -c ${pcvi}  -o "${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix}_${rna_prefix}.snv.metadata.txt"
+  """
+}
+
+process lenstools_add_indel_metadata {
+
+  label "lenstools"
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}_${rna_prefix}"
+  cache false
+
+  input:
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(rna_prefix), val(dataset), path(netmhcpan_input), path(mutant_fasta), path(pcvi), path(quants)
+  path gtf
+  val parstr
+
+  output:
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(rna_prefix), val(dataset), path("*metadata.txt"), emit: metadatas
+
+  script:
+  """
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py add-indel-metadata -n ${netmhcpan_input} -m ${mutant_fasta} -q ${quants} -g ${gtf} -c ${pcvi}  -o "${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix}_${rna_prefix}.indel.metadata.txt"
   """
 }
