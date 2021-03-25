@@ -201,6 +201,42 @@ def get_args():
     parser_add_indel_metadata.add_argument('-g', '--gtf')
     parser_add_indel_metadata.add_argument('-n', '--netmhcpan')
     parser_add_indel_metadata.add_argument('-o', '--output', required=True)
+    
+
+    # Subparser for filtering expressed hERVs
+    parser_expressed_hervs = subparsers.add_parser('expressed-hervs',
+                                                   help="Filter expressed hervs.")
+    parser_expressed_hervs.add_argument('-a', '--abundances',
+                                        help="Transcript abundance file.",
+                                        required=True)
+    parser_expressed_hervs.add_argument('-m', '--metric',
+                                        help="Column for expression from abundance file.",
+                                        default="TPM")
+    parser_expressed_hervs.add_argument('-r', '--exclude-zeros',
+                                        help="Exclude zero counts when calculating percentile.",
+                                        action='store_true')
+    parser_expressed_hervs.add_argument('-p', '--percentile',
+                                        help="Percentile for determining expression.",
+                                        default=50)
+    parser_expressed_hervs.add_argument('-t', '--abundance-threshold',
+                                        help="abundance threshold.",
+                                        default=0)
+    parser_expressed_hervs.add_argument('-o', '--output',
+                                        help="Output file name.",
+                                        required=True)
+
+    # Subparser for making hERV peptides
+    parser_make_herv_peptides = subparsers.add_parser('make-herv-peptides',
+                                                   help="Create hERV peptides.")
+    parser_make_herv_peptides.add_argument('-e', '--expressed-hervs',
+                                        help="Expressed hERVs",
+                                        required=True)
+    parser_make_herv_peptides.add_argument('-r', '--herv-ref',
+                                        help="hERV reference FASTA.",
+                                        required=True)
+    parser_make_herv_peptides.add_argument('-o', '--output',
+                                        help="Output file name.",
+                                        required=True)
 
 
     return parser.parse_args()
@@ -1073,7 +1109,46 @@ def make_pyclone_vi_inputs(args):
             ofo.write(i)
 
 
+def expressed_hervs(args):
+    """
+    """
+    tx_abundances = load_tx_abundances(args)
+    tx_threhsold = 0
+    if not(args.abundance_threshold):
+        tx_threshold = get_tx_threshold(args, tx_abundances)
+    else:
+        tx = re.search('transcript:\S*', seq_record.description).group(0).split(':')[1]
+        tx_threshold = float(args.abundance_threshold)
+    expressed_hervs = get_expressed_txs(args, tx_threshold)
+#    print("tx_thresshold: {}".format(tx_threshold))
+#    print("# of expressed transcripts: {}".format(len(expressed_txids)))
+#    print("Some expressed transcripts: {}".format(expressed_txids[:10]))
+#    print("# of filtered transcripts: {}".format(len(filtered_records)))
+    with open(args.output, 'w') as ofo:
+        for herv in expressed_hervs:
+            ofo.write("{}\n".format(herv))
 
+
+def make_herv_peptides(args):
+    """
+    """
+    expressed_hervs = []
+    expressed_hervs_seqs = {}
+    with open(args.expressed_hervs) as eho:
+        for line in eho.readlines():
+            line = line.rstrip()
+            expressed_hervs.append(line)
+
+    for seq_record in SeqIO.parse(args.herv_ref, "fasta"):
+        if seq_record.description in expressed_hervs:
+            expressed_hervs_seqs[seq_record.description] = seq_record.seq
+
+    print(expressed_hervs_seqs)
+
+    with open(args.output, 'w') as ofo:
+        for k, v in expressed_hervs_seqs.items():
+            ofo.write(">{}\n{}\n".format(k, v))
+         
 
 
 def main():
@@ -1099,6 +1174,10 @@ def main():
         add_indel_metadata(args)
     if args.command == 'make-genomic-context':
         make_genomic_context(args)
+    if args.command == 'expressed-hervs':
+        expressed_hervs(args)
+    if args.command == 'make-herv-peptides':
+        make_herv_peptides(args)
 
 if __name__=='__main__':
     main()

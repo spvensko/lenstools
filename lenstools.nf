@@ -231,3 +231,43 @@ process lenstools_make_genomic_context {
   python ${params.project_dir}/workflow/lenstools/bin/lenstools.py make-genomic-context -v ${vcf} -c ${tx_cds} -o ${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix}.snvs.nuc.fa
   """
 }
+
+process lenstools_filter_expressed_hervs {
+
+  label "lenstools"
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  tag "${dataset}/${pat_name}/${prefix}"
+
+  input:
+  tuple val(pat_name), val(prefix), val(dataset), path(quant)
+  val parstr
+
+  output:
+  tuple val(pat_name), val(prefix), val(dataset), path('*.expressed_hervs.txt'), emit: expressed_hervs
+
+  script:
+  """
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py expressed-hervs ${parstr} -a ${quant} -o ${dataset}-${pat_name}-${prefix}.expressed_hervs.txt
+  """
+}
+
+process lenstools_make_herv_peptides {
+
+  label "lenstools"
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  tag "${dataset}/${pat_name}/${prefix}"
+
+  input:
+  tuple val(pat_name), val(prefix), val(dataset), path(expressed_hervs)
+  path herv_ref
+  val parstr
+
+  output:
+  tuple val(pat_name), val(prefix), val(dataset), path('*.hervs.peptides.fa'), emit: herv_peptides
+
+  script:
+  """
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py make-herv-peptides ${parstr} -e ${expressed_hervs} -r ${herv_ref} -o ${dataset}-${pat_name}-${prefix}.hervs.peptides.fa
+  """
+}
+
