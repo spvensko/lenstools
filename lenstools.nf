@@ -214,7 +214,7 @@ process lenstools_add_indel_metadata {
 }
 
 process lenstools_make_genomic_context {
-  
+
   label "lenstools"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
   tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
@@ -229,5 +229,24 @@ process lenstools_make_genomic_context {
   script:
   """
   python ${params.project_dir}/workflow/lenstools/bin/lenstools.py make-genomic-context -v ${vcf} -c ${tx_cds} -o ${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix}.snvs.nuc.fa
+  """
+}
+
+
+process lenstools_consolidate_multiqc_stats {
+
+  label "lenstools"
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  cache false
+
+  input:
+  path multiqc_data
+
+  output:
+  path "stats.tsv", emit: consolidated_stats
+
+  script:
+  """
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py consolidate-multiqc-stats -d ${multiqc_data} -o stats.tsv
   """
 }

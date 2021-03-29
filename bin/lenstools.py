@@ -13,6 +13,7 @@ from scipy import stats
 import csv
 import pysam
 import hashlib
+import os
 
 from pysam.libcalignmentfile import IteratorColumnRegion
 
@@ -42,7 +43,7 @@ def get_args():
     parser_make_peptides.add_argument('-w', '--wt-output',
                                       help="Wildtype peptides output file name.",
                                       required=True)
-    
+
     # Subparser for generating genomic context
     parser_make_context = subparsers.add_parser('make-genomic-context',
                                                  help="Make nucleotide FASTA file.")
@@ -201,6 +202,15 @@ def get_args():
     parser_add_indel_metadata.add_argument('-g', '--gtf')
     parser_add_indel_metadata.add_argument('-n', '--netmhcpan')
     parser_add_indel_metadata.add_argument('-o', '--output', required=True)
+
+
+    # Subparser for adding SNV metadata
+    parser_consol_mqc_stats = subparsers.add_parser('consolidate-multiqc-stats',
+                                                   help="Add metadata to indel netmhcpan output")
+    parser_consol_mqc_stats.add_argument('-d', '--multiqc-data',
+                                        help="Directory containing multiqc stats files.",
+                                        required=True)
+    parser_consol_mqc_stats.add_argument('-o', '--output', required=True)
 
 
     return parser.parse_args()
@@ -411,7 +421,7 @@ def make_genomic_context(args):
                 print(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)]))
                 var_md5sum = hashlib.md5("{}".format(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)])).encode('utf-8')).hexdigest()[:16]
                 emitted_nucs["{}\t{}:{}\t{}\t{}\t{}".format(var_md5sum, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT)] = mut_nuc
-    
+
     with open(args.output, 'w') as ofo:
         for k, v in emitted_nucs.items():
             ofo.write('>{}\t{}\n'.format(k, v))
@@ -837,7 +847,7 @@ def add_snv_metadata(args):
             line = line.split(',')
             if line_idx == 0:
                 header = line
-                try: 
+                try:
                     header.remove('BindLevel')
                 except:
                     pass
@@ -1073,7 +1083,65 @@ def make_pyclone_vi_inputs(args):
             ofo.write(i)
 
 
+def consolidate_multiqc_stats(args):
+    """
+    """
 
+    sample_level_stats = {}
+
+    stats_files = ["multiqc_fastqc.txt", "multiqc_picard_RnaSeqMetrics.txt", "multiqc_samtools_stats.txt"]
+
+    for stats_file in stats_files:
+        with open(os.path.join(os.getcwd(), 'multiqc_data', stats_file)) as sfo:
+            metric_to_idx = {}
+            for line_idx, line in enumerate(sfo.readlines()):
+                line = line.rstrip().split('\t')
+                if line_idx == 0:
+                    for metric_idx, metric in enumerate(line[1:]):
+                        metric_to_idx[metric] = metric_idx + 1
+                else:
+                    print(line)
+                    sample = line[0]
+                    print("Sample: {}".format(line[0]))
+                    suffix = ''
+                    if re.search("_[12]\.", sample) or re.search("_[12]$", sample):
+                        print("Reformating sample name")
+                        sample = '_'.join(line[0].split('_')[:-1])
+                        suffix = ' (file {})'.format(line[metric_to_idx['Filename']].split('_')[-1])
+                    print("New Sample: {}".format(sample))
+                    print("Suffix Sample: {}".format(suffix))
+
+                    if sample not in sample_level_stats.keys():
+                        sample_level_stats[sample] = {}
+                    for metric, metric_idx in metric_to_idx.items():
+                        sample_level_stats[sample]["{}{}".format(metric, suffix)] = line[metric_idx]
+
+    print(sample_level_stats)
+
+
+    with open(args.output, 'w') as ofo:
+        header = []
+        for sample in sample_level_stats.keys():
+            for metric in sample_level_stats[sample]:
+                if metric not in header:
+                    header.append(metric)
+
+        print(header)
+
+        header.insert(0, 'sample')
+
+        ofo.write("{}\n".format('\t'.join(header)))
+
+        for sample in sample_level_stats.keys():
+            print(sample_level_stats[sample])
+            sample_line = []
+            sample_line.append(sample)
+            for metric in header[1:]:
+                if metric in sample_level_stats[sample].keys():
+                    sample_line.append(sample_level_stats[sample][metric])
+                else:
+                    sample_line.append('NA')
+            ofo.write("{}\n".format('\t'.join(sample_line)))
 
 
 def main():
@@ -1099,6 +1167,8 @@ def main():
         add_indel_metadata(args)
     if args.command == 'make-genomic-context':
         make_genomic_context(args)
+    if args.command == 'consolidate-multiqc-stats':
+        consolidate_multiqc_stats(args)
 
 if __name__=='__main__':
     main()
