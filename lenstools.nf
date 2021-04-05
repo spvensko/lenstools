@@ -237,6 +237,7 @@ process lenstools_filter_expressed_hervs {
   label "lenstools"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
   tag "${dataset}/${pat_name}/${prefix}"
+  cache false
 
   input:
   tuple val(pat_name), val(prefix), val(dataset), path(quant)
@@ -256,6 +257,7 @@ process lenstools_make_herv_peptides {
   label "lenstools"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
   tag "${dataset}/${pat_name}/${prefix}"
+  cache false
 
   input:
   tuple val(pat_name), val(prefix), val(dataset), path(expressed_hervs)
@@ -271,3 +273,22 @@ process lenstools_make_herv_peptides {
   """
 }
 
+process lenstools_get_herv_metadata {
+
+  label "lenstools"
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  tag "${dataset}/${pat_name}/${prefix}"
+  cache false
+
+  input:
+  tuple val(pat_name), val(prefix), val(dataset), path(netmhcpan), path(abundances)
+  val parstr
+
+  output:
+  tuple val(pat_name), val(prefix), val(dataset), path('*.hervs.metadata.txt'), emit: herv_metadata
+
+  script:
+  """
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py get-herv-metadata ${parstr} -a ${abundances} -n ${netmhcpan} -o ${dataset}-${pat_name}-${prefix}.hervs.metadata.txt
+  """
+}

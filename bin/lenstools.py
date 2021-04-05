@@ -239,6 +239,19 @@ def get_args():
                                         required=True)
 
 
+    parser_get_herv_metadata = subparsers.add_parser('get-herv-metadata',
+                                                   help="Create hERV peptides.")
+    parser_get_herv_metadata.add_argument('-a', '--abundances',
+                                        help="Expressed hERVs",
+                                        required=True)
+    parser_get_herv_metadata.add_argument('-n', '--netmhcpan',
+                                        help="Expressed hERVs",
+                                        required=True)
+    parser_get_herv_metadata.add_argument('-o', '--output',
+                                        help="Output file name.",
+                                        required=True)
+
+
     return parser.parse_args()
 
 
@@ -577,7 +590,7 @@ def expressed_variants(args):
     """
     """
     tx_abundances = load_tx_abundances(args)
-    tx_threhsold = 0
+    tx_threshold = 0
     if not(args.abundance_threshold):
         tx_threshold = get_tx_threshold(args, tx_abundances)
     else:
@@ -620,6 +633,8 @@ def get_tx_threshold(args, counts):
     """
     """
     threshold = np.percentile(counts, int(args.percentile))
+    print(args.percentile)
+    print(threshold)
     return threshold
 
 def get_expressed_txs(args, threshold):
@@ -1113,11 +1128,13 @@ def expressed_hervs(args):
     """
     """
     tx_abundances = load_tx_abundances(args)
-    tx_threhsold = 0
+    tx_threshold = 0
     if not(args.abundance_threshold):
+        print("No abundance threshold!")
         tx_threshold = get_tx_threshold(args, tx_abundances)
     else:
-        tx = re.search('transcript:\S*', seq_record.description).group(0).split(':')[1]
+        print("Abundance threshold: {}".format(args.abundance_threshold))
+#        tx = re.search('transcript:\S*', seq_record.description).group(0).split(':')[1]
         tx_threshold = float(args.abundance_threshold)
     expressed_hervs = get_expressed_txs(args, tx_threshold)
 #    print("tx_thresshold: {}".format(tx_threshold))
@@ -1134,6 +1151,7 @@ def make_herv_peptides(args):
     """
     expressed_hervs = []
     expressed_hervs_seqs = {}
+    expressed_hervs_aas = {}
     with open(args.expressed_hervs) as eho:
         for line in eho.readlines():
             line = line.rstrip()
@@ -1145,10 +1163,68 @@ def make_herv_peptides(args):
 
     print(expressed_hervs_seqs)
 
+    for i in [0, 1, 2]:
+        for id, seq in expressed_hervs_seqs.items():
+            aa_seq = seq[i:].translate(to_stop=False)
+            expressed_hervs_aas["{}_{}".format(id, i)] = aa_seq
+                 
+
     with open(args.output, 'w') as ofo:
-        for k, v in expressed_hervs_seqs.items():
-            ofo.write(">{}\n{}\n".format(k, v))
+        for k, v in expressed_hervs_aas.items():
+            if len(v) > 8:
+                ofo.write(">{}\n{}\n".format(k, v))
          
+
+
+def get_herv_metadata(args):
+    """
+    """
+    #tx_abundances = load_tx_abundances(args)
+
+    #print(tx_abundances)
+    
+    tx_to_tpm = {}
+    with open(args.abundances) as qfo:
+        tpm_col_idx = ''
+        tx_col_idx = ''
+        for line_idx, line in enumerate(qfo.readlines()):
+            if line_idx == 0:
+                print(line)
+                tpm_col_idx = line.split('\t').index('TPM')
+                tx_col_idx = line.split('\t').index('Name')
+            else:
+                line = line.split('\t')
+                tx_to_tpm[line[tx_col_idx].split('.')[0][:15].replace(':','_')] = line[tpm_col_idx]
+
+    print(tx_to_tpm)
+
+    herv_expression = {} 
+
+    output_lines = []                                                                               
+    
+    with open(args.netmhcpan) as mno:                                                               
+        for line_idx, line in enumerate(mno.readlines()):                                           
+            line = line.rstrip()                                                                    
+            line = line.split()                                                                     
+            if len(line) >= 16 and line[0] == 'Pos':                                                
+                header = line                                                                       
+                try:                                                                                
+                    header.remove('BindLevel')                                                      
+                except:                                                                             
+                    pass                                                                            
+                header.extend(['gene_name', 'read_count'])                                          
+            if len(line) < 16 or line[0] in ['Protein', 'Pos']:                                     
+                continue                                                                            
+            else:                                                                                   
+                print(line)                                                                         
+                tpm = tx_to_tpm[line[10]]                                                           
+                line.extend([tpm])                                                       
+                output_lines.append(line)                                                           
+                                                                                                    
+    with open(args.output, 'w') as ofo:                                                             
+        ofo.write("{}\n".format('\t'.join(header)))                                                 
+        for line in output_lines:                                                                   
+            ofo.write("{}\n".format('\t'.join(line)))                                     
 
 
 def main():
@@ -1178,6 +1254,9 @@ def main():
         expressed_hervs(args)
     if args.command == 'make-herv-peptides':
         make_herv_peptides(args)
+    if args.command == 'get-herv-metadata':
+        get_herv_metadata(args)
+    
 
 if __name__=='__main__':
     main()
