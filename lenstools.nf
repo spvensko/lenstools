@@ -214,7 +214,7 @@ process lenstools_add_indel_metadata {
 }
 
 process lenstools_make_genomic_context {
-  
+
   label "lenstools"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
   tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
@@ -260,8 +260,7 @@ process lenstools_make_herv_peptides {
   cache false
 
   input:
-  tuple val(pat_name), val(prefix), val(dataset), path(expressed_hervs)
-  path herv_ref
+  tuple val(pat_name), val(prefix), val(dataset), path(expressed_hervs), path(patient_ref)
   val parstr
 
   output:
@@ -269,7 +268,7 @@ process lenstools_make_herv_peptides {
 
   script:
   """
-  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py make-herv-peptides ${parstr} -e ${expressed_hervs} -r ${herv_ref} -o ${dataset}-${pat_name}-${prefix}.hervs.peptides.fa
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py make-herv-peptides ${parstr} -e ${expressed_hervs} -r ${patient_ref} -o ${dataset}-${pat_name}-${prefix}.hervs.peptides.fa
   """
 }
 

@@ -42,7 +42,7 @@ def get_args():
     parser_make_peptides.add_argument('-w', '--wt-output',
                                       help="Wildtype peptides output file name.",
                                       required=True)
-    
+
     # Subparser for generating genomic context
     parser_make_context = subparsers.add_parser('make-genomic-context',
                                                  help="Make nucleotide FASTA file.")
@@ -201,7 +201,7 @@ def get_args():
     parser_add_indel_metadata.add_argument('-g', '--gtf')
     parser_add_indel_metadata.add_argument('-n', '--netmhcpan')
     parser_add_indel_metadata.add_argument('-o', '--output', required=True)
-    
+
 
     # Subparser for filtering expressed hERVs
     parser_expressed_hervs = subparsers.add_parser('expressed-hervs',
@@ -460,7 +460,7 @@ def make_genomic_context(args):
                 print(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)]))
                 var_md5sum = hashlib.md5("{}".format(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)])).encode('utf-8')).hexdigest()[:16]
                 emitted_nucs["{}\t{}:{}\t{}\t{}\t{}".format(var_md5sum, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT)] = mut_nuc
-    
+
     with open(args.output, 'w') as ofo:
         for k, v in emitted_nucs.items():
             ofo.write('>{}\t{}\n'.format(k, v))
@@ -888,7 +888,7 @@ def add_snv_metadata(args):
             line = line.split(',')
             if line_idx == 0:
                 header = line
-                try: 
+                try:
                     header.remove('BindLevel')
                 except:
                     pass
@@ -1167,13 +1167,13 @@ def make_herv_peptides(args):
         for id, seq in expressed_hervs_seqs.items():
             aa_seq = seq[i:].translate(to_stop=False)
             expressed_hervs_aas["{}_{}".format(id, i)] = aa_seq
-                 
+
 
     with open(args.output, 'w') as ofo:
         for k, v in expressed_hervs_aas.items():
             if len(v) > 8:
                 ofo.write(">{}\n{}\n".format(k, v))
-         
+
 
 
 def get_herv_metadata(args):
@@ -1182,7 +1182,7 @@ def get_herv_metadata(args):
     #tx_abundances = load_tx_abundances(args)
 
     #print(tx_abundances)
-    
+
     tx_to_tpm = {}
     with open(args.abundances) as qfo:
         tpm_col_idx = ''
@@ -1198,33 +1198,33 @@ def get_herv_metadata(args):
 
     print(tx_to_tpm)
 
-    herv_expression = {} 
+    herv_expression = {}
 
-    output_lines = []                                                                               
-    
-    with open(args.netmhcpan) as mno:                                                               
-        for line_idx, line in enumerate(mno.readlines()):                                           
-            line = line.rstrip()                                                                    
-            line = line.split()                                                                     
-            if len(line) >= 16 and line[0] == 'Pos':                                                
-                header = line                                                                       
-                try:                                                                                
-                    header.remove('BindLevel')                                                      
-                except:                                                                             
-                    pass                                                                            
-                header.extend(['gene_name', 'read_count'])                                          
-            if len(line) < 16 or line[0] in ['Protein', 'Pos']:                                     
-                continue                                                                            
-            else:                                                                                   
-                print(line)                                                                         
-                tpm = tx_to_tpm[line[10]]                                                           
-                line.extend([tpm])                                                       
-                output_lines.append(line)                                                           
-                                                                                                    
-    with open(args.output, 'w') as ofo:                                                             
-        ofo.write("{}\n".format('\t'.join(header)))                                                 
-        for line in output_lines:                                                                   
-            ofo.write("{}\n".format('\t'.join(line)))                                     
+    output_lines = []
+
+    with open(args.netmhcpan) as mno:
+        for line_idx, line in enumerate(mno.readlines()):
+            line = line.rstrip()
+            line = line.split()
+            if len(line) >= 16 and line[0] == 'Pos':
+                header = line
+                try:
+                    header.remove('BindLevel')
+                except:
+                    pass
+                header.extend(['read_count'])
+            if len(line) < 16 or line[0] in ['Protein', 'Pos']:
+                continue
+            else:
+                print(line)
+                tpm = tx_to_tpm[line[10]]
+                line.extend([tpm])
+                output_lines.append(line)
+
+    with open(args.output, 'w') as ofo:
+        ofo.write("{}\n".format('\t'.join(header)))
+        for line in output_lines:
+            ofo.write("{}\n".format('\t'.join(line)))
 
 
 def main():
@@ -1256,7 +1256,7 @@ def main():
         make_herv_peptides(args)
     if args.command == 'get-herv-metadata':
         get_herv_metadata(args)
-    
+
 
 if __name__=='__main__':
     main()
