@@ -1127,6 +1127,7 @@ def consolidate_multiqc_stats(args):
                     header.append(metric)
 
         print(header)
+        header = sorted(header)
 
         header.insert(0, 'sample')
 
