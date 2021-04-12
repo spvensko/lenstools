@@ -259,6 +259,71 @@ def get_args():
                                         required=True)
     parser_consol_mqc_stats.add_argument('-o', '--output', required=True)
 
+    # Subparser for filtering expression from a provided list
+    parser_expressed_self_genes = subparsers.add_parser('expressed-self-genes',
+                                                 help="Filter expressed self_genes.")
+    parser_expressed_self_genes.add_argument('-a', '--abundances',
+                                           help="Transcript abundance file.",
+                                           required=True)
+    parser_expressed_self_genes.add_argument('-m', '--metric',
+                                           help="Column for expression from abundance file.",
+                                           default="TPM")
+    parser_expressed_self_genes.add_argument('-r', '--exclude-zeros',
+                                           help="Exclude zero counts when calculating percentile.",
+                                           action='store_true')
+    parser_expressed_self_genes.add_argument('-p', '--percentile',
+                                           help="Percentile for determining expression.",
+                                           default=50)
+    parser_expressed_self_genes.add_argument('-t', '--abundance-threshold',
+                                           help="abundance threshold.",
+                                           default=0)
+    parser_expressed_self_genes.add_argument('-g', '--gene-list',
+                                             help="Genes list (e.g. self-antigens, CTAs, etc.)",
+                                      required=True)
+    parser_expressed_self_genes.add_argument('-f', '--gtf',
+                                      help="GTF",
+                                      required=True)
+    parser_expressed_self_genes.add_argument('-o', '--output',
+                                      help="Output file name.",
+                                      required=True)
+
+
+    # Subparser for making self-antigen peptides
+    parser_make_self_peptides = subparsers.add_parser('make-self-antigen-peptides',
+                                           help="Make self-antigen peptides.")
+    parser_make_self_peptides.add_argument('-e', '--expressed-selfs',
+                                      required=True)
+    parser_make_self_peptides.add_argument('-r', '--tx-aa-fasta',
+                                      help="GTF",
+                                      required=True)
+    parser_make_self_peptides.add_argument('-s', '--somatic-vcf',
+                                      help="Somatic VCF",
+                                      required=True)
+    parser_make_self_peptides.add_argument('-g', '--germline-vcf',
+                                      help="Somatic VCF",
+                                      required=True)
+    parser_make_self_peptides.add_argument('-o', '--output',
+                                      help="Output file",
+                                      required=True)
+
+
+    # Subparser for getting self-antigen metadata
+    parser_add_self_metadata = subparsers.add_parser('add-self-antigen-metadata',
+                                                     help="Add self-antigen metadata.")
+    parser_add_self_metadata.add_argument('-q', '--quants',
+                                          required=True)
+    parser_add_self_metadata.add_argument('-b', '--binding-affinities',
+                                          help="Binding affinity data (netMHCpan format)",
+                                          required=True)
+    parser_add_self_metadata.add_argument('-g', '--gtf',
+                                          help="GTF",
+                                          required=True)
+    parser_add_self_metadata.add_argument('-o', '--output',
+                                          help="Output file",
+                                          required=True)
+
+
+
 
     return parser.parse_args()
 
@@ -1295,6 +1360,217 @@ def get_herv_metadata(args):
         for line in output_lines:
             ofo.write("{}\n".format('\t'.join(line)))
 
+def expressed_self_genes(args):
+    """
+    """
+    expressed_selfs = []
+    gene_list = []
+    with open(args.gene_list) as glo:
+        for line in glo.readlines():
+            gene_list.append(line.rstrip())
+    tx_abundances = load_tx_abundances(args)
+    tx_threhsold = 0
+    if not(args.abundance_threshold):
+        tx_threshold = get_tx_threshold(args, tx_abundances)
+    else:
+        tx_threshold = float(args.abundance_threshold)
+    expressed_txids = get_expressed_txs(args, tx_threshold)
+    print(expressed_txids[:10])
+    #print("tx_thresshold: {}".format(tx_threshold))
+    #print("# of expressed transcripts: {}".format(len(expressed_txids)))
+    #print("Some expressed transcripts: {}".format(expressed_txids[:10]))
+    #print("# of filtered transcripts: {}".format(len(filtered_records)))
+
+
+    tx_to_gene = {}
+    with open(args.gtf) as gtfo:
+        for line in gtfo.readlines():
+            line = line.split('\t')
+            if len(line) > 3 and line[2] == 'transcript':
+                gene_name = str(line).split('gene_name "')[1].split('"')[0]
+                tx_id = str(line).split('transcript_id "')[1].split('"')[0].split('.')[0]
+                tx_to_gene[tx_id] = gene_name
+
+
+
+    for tx, gene in tx_to_gene.items():
+        if gene in gene_list and tx in tx in expressed_txids:
+            print(gene, tx)
+            expressed_selfs.append("{}:{}".format(gene, tx))
+
+    with open(args.output, 'w') as ofo:
+        for expressed_self in expressed_selfs:
+            ofo.write("{}\n".format(expressed_self))
+
+
+def make_self_antigen_peptides(args):
+    """
+    """
+    print("Okay!")
+    expressed_selfs = []
+    expressed_self_seqs = {}
+    with open(args.expressed_selfs) as eso:
+        for line in eso.readlines():
+            expressed_selfs.append(line.rstrip())
+
+    tx_to_aa = load_tx_aas(args)
+    tx_to_aa_trunc = {k.partition('.')[0]:v for k, v in tx_to_aa.items()}
+
+
+
+
+    # Need to incorporate the germline variants here.
+
+    for expressed_self in expressed_selfs:
+        tx = expressed_self.partition(':')[2]
+        if tx in tx_to_aa_trunc.keys():
+            aa_seq = tx_to_aa_trunc[tx]
+            expressed_self_seqs[tx] = aa_seq
+
+    relevant_germline_vars = {}
+    #vcf_reader = vcf.Reader(open(args.vcf), 'r', compressed=True)
+    vcf_reader = vcf.Reader(open(args.germline_vcf), 'r')
+    for record in vcf_reader:
+        #print(record)
+        possible_variants = [x for x in record.INFO['ANN']]
+        for possible_variant in possible_variants:
+            split_possible = possible_variant.split('|')
+            if split_possible[1] == 'missense_variant' and split_possible[13] and split_possible[-1] == '':
+                transcript = split_possible[6].split('.')[0]
+                #transcript = split_possible[6]
+                #print(record)
+                change = split_possible[10].lstrip('p.')
+                change = re.split('(\d+)', change)
+                pre = change[0]
+                post = change[2]
+                pos = change[1]
+                pre1 = seq1(pre)
+                post1 = seq1(post)
+                chr_pos = record
+                #print("{} {} {} {} {} {} {}".format(transcript, change, pre, pre1, post, post1, pos))
+                pos_total = split_possible[13]
+                #print(pos_total)
+                snapshot = pos_total.split('/')[0]
+                tlen = pos_total.split('/')[1]
+                if pos != snapshot:
+                    sys.exit(1)
+                if transcript in expressed_self_seqs.keys():
+                    print(record)
+                    print(possible_variant)
+                    if transcript not in relevant_germline_vars.keys():
+                        relevant_germline_vars[transcript] = [[pos, tlen, pre1, post1, chr_pos, record.genotype('norm')['GT']]]
+                    else:
+                        relevant_germline_vars[transcript].append([pos, tlen, pre1, post1, chr_pos, record.genotype('norm')['GT']])
+
+    tx_to_peps = {}
+    for expressed_self, expressed_self_seq in expressed_self_seqs.items():
+        print(expressed_self)
+        if expressed_self in relevant_germline_vars.keys():
+            relevant_vars = relevant_germline_vars[expressed_self]
+            print("{}\n{}".format(expressed_self, relevant_germline_vars[expressed_self]))
+            # Should probably be a named tuple
+            seq_windows = []
+            window = 21
+            step = 8
+            capture_index = 0
+            print(expressed_self_seq)
+            for pos_idx in range(len(expressed_self_seq)):
+                if pos_idx == capture_index:
+                    seq_windows.append([str(expressed_self_seq[pos_idx:(pos_idx + window)]), pos_idx+ 1, pos_idx + window + 1])
+                    capture_index += step
+            for seq_window in seq_windows:
+                print("Seq window: {}".format(seq_window))
+                seq_window_start = seq_window[1]
+                seq_window_stop = seq_window[2]
+                found_vars = 0
+                for relevant_var in relevant_vars:
+                    relevant_var_pos = relevant_var[0]
+                    print("Relevant var pos: {}".format(relevant_var_pos))
+                    if int(relevant_var_pos) > int(seq_window_start) and int(relevant_var_pos) < int(seq_window_stop):
+                        found_vars = 1
+                        print("Var is within window.")
+                        print(seq_window)
+                        print(relevant_var)
+                        relative_var_pos = int(relevant_var_pos) - int(seq_window_start)
+                        print(relative_var_pos)
+                        new_seq = list(seq_window[0])
+                        print(new_seq)
+                        if new_seq[relative_var_pos] != relevant_var[2]:
+                            print("The reference amino acid isn't what's expected.")
+                        new_seq[relative_var_pos] = relevant_var[3]
+                        if relevant_var[-1] in ['0/1', '0|1']:
+                            print("Variant is heterozygote, grabbing both genotypes.")
+                            tx_to_peps["{}_{}_het_alt0".format(expressed_self, seq_window_start)] = seq_window[0]
+                            tx_to_peps["{}_{}_het_alt1".format(expressed_self, seq_window_start)] = ''.join(new_seq)
+                        if relevant_var[-1] in ['1/1', '1|1']:
+                            tx_to_peps["{}_{}_hom_alt".format(expressed_self, seq_window_start)] = ''.join(new_seq)
+                        print("old seq: {}\nnew_seq: {}".format(seq_window[0], ''.join(new_seq)))
+                if found_vars == 0:
+                    print("{}\t{}".format(expressed_self, expressed_self_seq))
+                    tx_to_peps["{}_{}".format(expressed_self, seq_window_start)] = seq_window[0]
+        else:
+            print("No variants")
+            # If there are no applicable variants, simply emit the reference sequence.
+            tx_to_peps[expressed_self] = expressed_self_seq
+
+    with open(args.output, 'w') as ofo:
+        for expressed_self, expressed_self_seq in sorted(tx_to_peps.items()):
+            print(expressed_self)
+            ofo.write(">{}\n{}\n".format(expressed_self, expressed_self_seq))
+
+
+def add_self_antigen_metadata(args):
+    """
+    """
+    tx_to_tpm = {}
+    with open(args.quants) as qfo:
+        tpm_col_idx = ''
+        tx_col_idx = ''
+        for line_idx, line in enumerate(qfo.readlines()):
+            if line_idx == 0:
+                print(line)
+                tpm_col_idx = line.split('\t').index('TPM')
+                tx_col_idx = line.split('\t').index('Name')
+            else:
+                line = line.split('\t')
+                tx_to_tpm[line[tx_col_idx].split('.')[0]] = line[tpm_col_idx]
+
+    tx_to_gene = {}
+    with open(args.gtf) as gtfo:
+        for line in gtfo.readlines():
+            line = line.split('\t')
+            if len(line) > 3 and line[2] == 'transcript':
+                gene_name = str(line).split('gene_name "')[1].split('"')[0]
+                tx_id = str(line).split('transcript_id "')[1].split('"')[0].partition('.')[0]
+                tx_to_gene[tx_id] = gene_name
+
+    output_lines = []
+
+    with open(args.binding_affinities) as mno:
+        for line_idx, line in enumerate(mno.readlines()):
+            line = line.rstrip()
+            line = line.split()
+            if len(line) >= 16 and line[0] == 'Pos':
+                header = line
+                try:
+                    header.remove('BindLevel')
+                except:
+                    pass
+                header.extend(['gene_name', 'read_count'])
+            if len(line) < 16 or line[0] in ['Protein', 'Pos']:
+                continue
+            else:
+                print(line)
+                gene_name = tx_to_gene[line[10]]
+                tpm = tx_to_tpm[line[10]]
+                line.extend([gene_name, tpm])
+                output_lines.append(line)
+
+    with open(args.output, 'w') as ofo:
+        ofo.write("{}\n".format('\t'.join(header)))
+        for line in output_lines:
+            ofo.write("{}\n".format('\t'.join(line)))
+
 
 def main():
     args = get_args()
@@ -1325,6 +1601,12 @@ def main():
         make_herv_peptides(args)
     if args.command == 'get-herv-metadata':
         get_herv_metadata(args)
+    if args.command == 'expressed-self-genes':
+        expressed_self_genes(args)
+    if args.command == 'make-self-antigen-peptides':
+        make_self_antigen_peptides(args)
+    if args.command == 'add-self-antigen-metadata':
+        add_self_antigen_metadata(args)
     if args.command == 'consolidate-multiqc-stats':
         consolidate_multiqc_stats(args)
 

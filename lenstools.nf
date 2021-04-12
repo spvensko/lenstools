@@ -291,6 +291,72 @@ process lenstools_get_herv_metadata {
   python ${params.project_dir}/workflow/lenstools/bin/lenstools.py get-herv-metadata ${parstr} -a ${abundances} -n ${netmhcpan} -o ${dataset}-${pat_name}-${prefix}.hervs.metadata.txt
   """
 
+process lenstools_filter_expressed_selfs {
+
+  label "lenstools"
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  tag "${dataset}/${pat_name}/${prefix}"
+  cache false
+
+  input:
+  tuple val(pat_name), val(prefix), val(dataset), path(quant)
+  path gtf
+  path gene_list
+  val parstr
+
+  output:
+  tuple val(pat_name), val(prefix), val(dataset), path("*.expressed_selfs.txt"), emit: expressed_selfs
+
+  script:
+  """
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py expressed-self-genes ${parstr} -g ${gene_list} --gtf ${gtf} -a ${quant} -o ${dataset}-${pat_name}-${prefix}.expressed_selfs.txt
+  """
+}
+
+
+process lenstools_make_self_antigen_peptides {
+
+  label "lenstools"
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  tag "${dataset}/${pat_name}/${prefix}"
+  cache false
+
+  input:
+  tuple val(pat_name), val(prefix), val(dataset), path(expressed_selfs), path(germline_vcf), path(somatic_vcf)
+  path pep_ref
+
+  output:
+  tuple val(pat_name), val(prefix), val(dataset), path("*self.pep.fa"), emit: self_antigen_peptides
+
+  script:
+  """
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py make-self-antigen-peptides --expressed-selfs ${expressed_selfs} -r ${pep_ref} --germline-vcf ${germline_vcf} --somatic-vcf ${somatic_vcf} -o ${dataset}-${pat_name}-${prefix}.self.pep.fa
+  """
+}
+
+
+process lenstools_add_self_antigen_metadata {
+
+  label "lenstools"
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  tag "${dataset}/${pat_name}/${prefix}"
+  cache false
+
+  input:
+  tuple val(pat_name), val(prefix), val(dataset), path(binding_affinities), path(quants)
+  path gtf
+
+  output:
+  tuple val(pat_name), val(prefix), val(dataset), path("*self_antigen.metadata.txt"), emit: self_antigen_metadata
+
+  script:
+  """
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py add-self-antigen-metadata -q ${quants} -b ${binding_affinities} -g ${gtf} -o ${dataset}-${pat_name}-${prefix}.self_antigen.metadata.txt
+  """
+}
+
+
+
 process lenstools_consolidate_multiqc_stats {
 
   label "lenstools"
