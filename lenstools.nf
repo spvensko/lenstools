@@ -374,3 +374,69 @@ process lenstools_consolidate_multiqc_stats {
   python ${params.project_dir}/workflow/lenstools/bin/lenstools.py consolidate-multiqc-stats -d ${multiqc_data} -o stats.tsv
   """
 }
+
+process lenstools_filter_virdetect_by_counts {
+
+  label 'lenstools'
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  tag "${dataset}/${pat_name}/${prefix}"
+  cache false
+
+  input:
+  tuple val(pat_name), val(prefix), val(dataset), path(viral_quants)
+  path viral_ref
+  val parstr
+
+  output:
+  tuple val(pat_name), val(prefix), val(dataset), path('*expressed_viruses.txt'), emit: expressed_viruses
+
+  script:
+  """
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py filter-virdetect-by-counts --viral-quants ${viral_quants} --viral-ref ${viral_ref} ${parstr} -o ${dataset}-${pat_name}-${prefix}.expressed_viruses.txt
+  """
+}
+
+
+process lenstools_make_viral_peptides {
+
+  label 'lenstools'
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  tag "${dataset}/${pat_name}/${prefix}"
+  cache false
+
+  input:
+  tuple val(pat_name), val(prefix), val(dataset), path(expressed_viruses), path(fasta)
+//  path viral_cds_ref
+//  path viral_pep_ref
+  val parstr
+
+  output:
+  tuple val(pat_name), val(prefix), val(dataset), path('*viral.pep.fa'), emit: viral_peptides
+
+  script:
+  """
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py make-viral-peptides --expressed-viruses ${expressed_viruses} --sample-viral-ref ${fasta} ${parstr} -o ${dataset}-${pat_name}-${prefix}.viral.pep.fa
+  """
+}
+
+process lenstools_add_viral_metadata {
+
+  label 'lenstools'
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  tag "${dataset}/${pat_name}/${prefix}"
+  cache false
+
+  input:
+  tuple val(pat_name), val(prefix), val(dataset), path(binding_affinities), path(viral_quants)
+  path virus_cds_ref
+  val parstr
+
+  output:
+  tuple val(pat_name), val(prefix), val(dataset), path('*viral.metadata.txt'), emit: viral_metadata
+
+  script:
+  """
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py add-viral-metadata --viral-quants ${viral_quants} --binding-affinities ${binding_affinities} --viral-cds-ref ${virus_cds_ref} ${parstr} -o ${dataset}-${pat_name}-${prefix}.viral.metadata.txt
+  """
+}
+

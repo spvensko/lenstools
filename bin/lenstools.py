@@ -323,6 +323,53 @@ def get_args():
                                           required=True)
 
 
+   # Subparser for adding SNV metadata
+    parser_filter_virdetect_by_counts = subparsers.add_parser('filter-virdetect-by-counts',
+                                                   help="Generate list of expressed viruses")
+    parser_filter_virdetect_by_counts.add_argument('-q', '--viral-quants',
+                                        help="Viral counts file from VirDetect.",
+                                        required=True)
+    parser_filter_virdetect_by_counts.add_argument('-r', '--viral-ref',
+                                        help="Viral reference FASTA (used for VirDetect).",
+                                        required=True)
+    parser_filter_virdetect_by_counts.add_argument('-m', '--min-threshold',
+                                        help="Minimal count threshold.",
+                                        default='1')
+    parser_filter_virdetect_by_counts.add_argument('-o', '--output', required=True)
+
+    # Subparser for making viral peptides
+    parser_make_viral_peptides = subparsers.add_parser('make-viral-peptides',
+                                                       help="Make viral peptides")
+    parser_make_viral_peptides.add_argument('-e', '--expressed-viruses',
+                                        help="Viral counts file from VirDetect.",
+                                        required=True)
+#    parser_make_viral_peptides.add_argument('-p', '--viral-pep-ref',
+#                                        help="Viral peptide reference FASTA (used for VirDetect).",
+#                                        required=True)
+#    parser_make_viral_peptides.add_argument('-c', '--viral-cds-ref',
+#                                        help="Viral CDS reference FASTA (used for VirDetect).",
+#                                        required=True)
+    parser_make_viral_peptides.add_argument('-c', '--sample-viral-ref',
+                                        help="Viral CDS reference FASTA (used for VirDetect).",
+                                        required=True)
+    parser_make_viral_peptides.add_argument('-o', '--output', required=True)
+
+
+    # Subparser for getting viral metadata
+    parser_add_viral_metadata = subparsers.add_parser('add-viral-metadata',
+                                                   help="Add viral metadata.")
+    parser_add_viral_metadata.add_argument('-b', '--binding-affinities',
+                                        help="Binding affinities (netMHCpan format).",
+                                        required=True)
+    parser_add_viral_metadata.add_argument('-q', '--viral-quants',
+                                        help="Viral counts file from VirDetect.",
+                                        required=True)
+    parser_add_viral_metadata.add_argument('-r', '--viral-cds-ref',
+                                        help="Viral CDS reference FASTA (used for VirDetect).",
+                                        required=True)
+    parser_add_viral_metadata.add_argument('-o', '--output', required=True)
+
+
 
 
     return parser.parse_args()
@@ -1571,6 +1618,131 @@ def add_self_antigen_metadata(args):
         for line in output_lines:
             ofo.write("{}\n".format('\t'.join(line)))
 
+def filter_virdetect_by_counts(args):
+    """
+    Need a check here to ensure the raw_counts and raw_ref lists contain the
+    same number of elements.
+    """
+    raw_counts = []
+    raw_refs = []
+    with open(args.viral_quants) as vco:
+        raw_counts = vco.readlines()[0].rstrip().split()[1:]
+    with open(args.viral_ref) as vro:
+        for line in vro.readlines():
+            if line.startswith('>'):
+                line = line.rstrip('\n').lstrip('>')
+                raw_refs.append(line.split('|')[3])
+    viral_counts = {raw_refs[i]:raw_counts[i] for i in range(len(raw_refs)) if int(raw_counts[i]) > int(args.min_threshold)}
+    print(viral_counts)
+    with open(args.output, 'w') as ofo:
+        ofo.write("virus_ref\tread_count\n")
+        for k, v in viral_counts.items():
+            ofo.write("{}\t{}\n".format(k, v))
+
+
+def make_viral_peptides(args):
+    """
+    """
+    expressed_viruses = {}
+    virus_to_cds = {}
+    viral_peptide_seqs = {}
+    expressed_viral_peptides = {}
+
+    with open(args.expressed_viruses) as fo:
+        for line_idx, line in enumerate(fo.readlines()):
+            if line_idx != 0:
+                line = line.rstrip().split('\t')
+                expressed_viruses[line[0]] = line[1]
+
+    viral_seqs = {}
+
+    for seq_record in SeqIO.parse(args.sample_viral_ref, "fasta"):
+        map_info = seq_record.description.split('|')[1].split(' ')[0]
+        virus_id, unneeded, protein_id = map_info.partition('_cds_')
+        protein_id = re.sub(r'_1$', '', protein_id)
+        if virus_id not in virus_to_cds.keys():
+            virus_to_cds[virus_id] = [protein_id]
+        else:
+            virus_to_cds[virus_id].append(protein_id)
+
+        viral_seqs[protein_id] = seq_record.seq.translate()
+
+
+
+    with open(args.sample_viral_ref) as fo:
+        for line in fo.readlines():
+            if line.startswith('>'):
+                line = line.split('|')[1].split(' ')[0]
+                virus_id, unneeded, protein_id = line.partition('_cds_')
+                protein_id = re.sub(r'_1$', '', protein_id)
+                if virus_id not in virus_to_cds.keys():
+                    virus_to_cds[virus_id] = [protein_id]
+                else:
+                    virus_to_cds[virus_id].append(protein_id)
+
+#    for seq_record in SeqIO.parse(args.viral_pep_ref, "fasta"):
+#        peptide_id = seq_record.description.split(' ')[0]
+#        viral_peptide_seqs[peptide_id] = seq_record.seq
+
+    for expressed_virus in expressed_viruses.keys():
+        if expressed_virus in virus_to_cds.keys():
+            for protein in virus_to_cds[expressed_virus]:
+                expressed_viral_peptides[protein] = viral_seqs[protein]
+        else:
+            print("Cannot find virus {} in cds data.".format(expressed_virus))
+
+    with open(args.output, 'w') as ofo:
+        for expressed_viral_peptide_id, expressed_viral_peptide_seq in expressed_viral_peptides.items():
+            ofo.write(">{}\n{}\n".format(expressed_viral_peptide_id, expressed_viral_peptide_seq))
+
+
+def add_viral_metadata(args):
+    """
+    """
+    expressed_viruses = {}
+    cds_to_virus = {}
+
+    with open(args.viral_cds_ref) as fo:
+        for line in fo.readlines():
+            if line.startswith('>'):
+                line = line.split('|')[1].split(' ')[0]
+                virus_id, trash, protein_id = line.partition('_cds_')
+                protein_id = re.sub(r'_1$', '', protein_id)
+                cds_to_virus[protein_id] = virus_id
+
+    with open(args.viral_quants) as fo:
+        for line_idx, line in enumerate(fo.readlines()):
+            if line_idx != 0:
+                line = line.rstrip().split('\t')
+                expressed_viruses[line[0]] = line[1]
+
+    output_lines = []
+    header = []
+
+    with open(args.binding_affinities) as fo:
+        for line_idx, line in enumerate(fo.readlines()):
+            line = line.rstrip().split()
+            if len(line) >= 16 and line[0] == 'Pos':
+                header = line
+                try:
+                    header.remove('BindLevel')
+                except:
+                    pass
+                header.extend(['virus_id', 'read_count'])
+            if len(line) < 16 or line[0] in ['Protein', 'Pos']:
+                continue
+            else:
+                virus_id = cds_to_virus[line[10].replace('_1', '.1')]
+                read_counts = expressed_viruses[virus_id]
+                print(read_counts)
+                line.extend([virus_id, read_counts])
+                output_lines.append(line)
+
+    with open(args.output, 'w') as ofo:
+        ofo.write("{}\n".format('\t'.join(header)))
+        for line in output_lines:
+            ofo.write("{}\n".format('\t'.join(line)))
+
 
 def main():
     args = get_args()
@@ -1607,6 +1779,12 @@ def main():
         make_self_antigen_peptides(args)
     if args.command == 'add-self-antigen-metadata':
         add_self_antigen_metadata(args)
+    if args.command == 'filter-virdetect-by-counts':
+        filter_virdetect_by_counts(args)
+    if args.command == 'make-viral-peptides':
+        make_viral_peptides(args)
+    if args.command == 'add-viral-metadata':
+        add_viral_metadata(args)
     if args.command == 'consolidate-multiqc-stats':
         consolidate_multiqc_stats(args)
 
