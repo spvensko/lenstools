@@ -232,6 +232,7 @@ process lenstools_make_genomic_context {
   """
 }
 
+<<<<<<< HEAD
 process lenstools_filter_expressed_hervs {
 
   label "lenstools"
@@ -289,5 +290,22 @@ process lenstools_get_herv_metadata {
   script:
   """
   python ${params.project_dir}/workflow/lenstools/bin/lenstools.py get-herv-metadata ${parstr} -a ${abundances} -n ${netmhcpan} -o ${dataset}-${pat_name}-${prefix}.hervs.metadata.txt
+  """
+
+process lenstools_consolidate_multiqc_stats {
+
+  label "lenstools"
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
+  cache false
+
+  input:
+  path multiqc_data
+
+  output:
+  path "stats.tsv", emit: consolidated_stats
+
+  script:
+  """
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py consolidate-multiqc-stats -d ${multiqc_data} -o stats.tsv
   """
 }
