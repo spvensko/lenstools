@@ -204,7 +204,6 @@ def get_args():
     parser_add_indel_metadata.add_argument('-o', '--output', required=True)
 
 
-<<<<<<< HEAD
     # Subparser for filtering expressed hERVs
     parser_expressed_hervs = subparsers.add_parser('expressed-hervs',
                                                    help="Filter expressed hervs.")

@@ -232,7 +232,6 @@ process lenstools_make_genomic_context {
   """
 }
 
-<<<<<<< HEAD
 process lenstools_filter_expressed_hervs {
 
   label "lenstools"
