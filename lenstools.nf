@@ -441,3 +441,65 @@ process lenstools_add_viral_metadata {
   """
 }
 
+
+process lenstools_make_fusion_peptides {                                                            
+                                                                                                    
+  label "lenstools"                                                                                 
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'       
+  tag "${dataset}/${pat_name}/${prefix}"                                                            
+  cache false                                                                                       
+                                                                                                    
+  input:                                                                                            
+  tuple val(pat_name), val(prefix), val(dataset), path(fusions)                                     
+                                                                                                    
+  output:                                                                                           
+  tuple val(pat_name), val(prefix), val(dataset), path("*.pep.fa"), emit: fusion_peptides           
+                                                                                                    
+  script:                                                                                           
+  """                                                                                               
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py make-fusion-peptides -f ${fusions} -o ${dataset}-${pat_name}-${prefix}.fusion.pep.fa
+  """                                                                                               
+}                                                                                                   
+                                                                                                    
+                                                                                                    
+process lenstools_make_fusion_nucs {                                                                
+                                                                                                    
+  label "lenstools"                                                                                 
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'       
+  tag "${dataset}/${pat_name}/${prefix}"                                                            
+  cache false                                                                                       
+                                                                                                    
+  input:                                                                                            
+  tuple val(pat_name), val(prefix), val(dataset), path(fusions)                                     
+                                                                                                    
+  output:                                                                                           
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path("*.nuc.fa"), emit: fusion_nucs
+                                                                                                    
+  script:                                                                                           
+  """                                                                                               
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py make-fusion-nucs -f ${fusions} -o ${dataset}-${pat_name}-${prefix}.fusion.nuc.fa
+  """                                                                                               
+}                                                                                                   
+                                                                                                    
+                                                                                                    
+process lenstools_add_fusion_metadata {                                                             
+                                                                                                    
+  label "lenstools"                                                                                 
+  conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'       
+  tag "${dataset}/${pat_name}/${prefix}"                                                            
+  cache false                                                                                       
+                                                                                                    
+  input:                                                                                            
+  tuple val(pat_name), val(prefix), val(dataset), path(binding_affinities), path(fusions)           
+  val parstr                                                                                        
+                                                                                                    
+  output:                                                                                           
+  tuple val(pat_name), val(prefix), val(dataset), path("*fusion.metadata.txt"), emit: fusion_metadata
+                                                                                                    
+  script:                                                                                           
+  """                                                                                               
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py add-fusion-metadata -b ${binding_affinities} -f ${fusions} -o "${dataset}-${pat_name}-${prefix}.fusion.metadata.txt"
+  """                                                                                               
+}                                                                                                   
+
+

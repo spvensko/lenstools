@@ -370,6 +370,26 @@ def get_args():
     parser_add_viral_metadata.add_argument('-o', '--output', required=True)
 
 
+    # Subparser for making fusion peptides
+    parser_make_fusion_peptides = subparsers.add_parser('make-fusion-peptides',
+                                                        help="Make fusion peptides FASTA.")
+    parser_make_fusion_peptides.add_argument('-f', '--fusions',
+                                            help="Predicted fusions (STARFusion format).",
+                                            required=True)
+    parser_make_fusion_peptides.add_argument('-o', '--output',
+                                             required=True)
+
+    # Subparser for adding fusion metadata
+    parser_add_fusion_metadata = subparsers.add_parser('add-fusion-metadata',
+                                                      help="Add metadata to fusion binding data.")
+    parser_add_fusion_metadata.add_argument('-b', '--binding-affinities',
+                                           help="Binding affinity data (netMHCpan format).",
+                                           required=True)
+    parser_add_fusion_metadata.add_argument('-f', '--fusions',
+                                           help="Predicted fusions (STARFusion format).",
+                                            required=True)
+    parser_add_fusion_metadata.add_argument('-o', '--output',
+                                            required=True)
 
 
     return parser.parse_args()
@@ -1743,6 +1763,77 @@ def add_viral_metadata(args):
         for line in output_lines:
             ofo.write("{}\n".format('\t'.join(line)))
 
+def make_fusion_peptides(args):
+     """
+     """
+     valid_fusions = {}
+    with open(args.fusions) as fo:
+         header = []
+         header_map = {}
+        for line_idx, line in enumerate(fo.readlines()):
+            line = line.rstrip().split('\t')
+             if line_idx  == 0:
+                header_map = {j:i for i, j in enumerate(line)}
+             else:
+                 if line[header_map['FUSION_TRANSL']] != '.':
+                     start_prot = (int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - 1)/3
+                     peptide = line[header_map['FUSION_TRANSL']][start_prot - 8:start_prot + 8]
+                     if not(re.search('\*', peptide)):
+                         valid_fusions[line[header_map['#FusionName']]] = peptide
+
+     with open(args.output, 'w') as ofo:
+         for valid_fusion_id, valid_fusion_seq in valid_fusions.items():
+             ofo.write(">{}\n{}\n".format(valid_fusion_id, valid_fusion_seq))
+
+
+def add_fusion_metadata(args):
+    """
+    """
+    fusion_metadata = {}
+    with open(args.fusions) as fo:
+        col_to_idx = {}
+        for line_idx, line in enumerate(fo.readlines()):
+            line = line.rstrip().split()
+            if line_idx ==  0:
+                for col_idx, col in enumerate(line):
+                    col_to_idx[col_idx] = col
+            else:
+                fusion_metadata[line[0]] = {}
+                for elem_idx, elem in enumerate(line[1:]):
+                    fusion_metadata[line[0]][col_to_idx[elem_idx + 1]] = elem
+
+    extensions = ['JunctionReadCount', 'SpanningFragCount', 'SpliceType', 'LeftGene',
+                  'LeftBreakpoint', 'RightGene', 'RightBreakpoint', 'LargeAnchorSupport',
+                  'FFPM', 'annots']
+    output_lines = []
+    header = []
+
+    with open(args.binding_affinities) as fo:
+        for line_idx, line in enumerate(fo.readlines()):
+            line = line.rstrip().split()
+            if len(line) >=16 and line[0] == 'Pos':
+                header = line
+                try:
+                    header.remove('BindLevel')
+                except:
+                    pass
+                header.extend(extensions)
+            if len(line) < 16 or line[0] in ['Protein', 'Pos']:
+                continue
+            else:
+                relevant_metadata = fusion_metadata[line[10]]
+                line_extension = []
+                for extension in extensions:
+                    line_extension.append(relevant_metadata[extension])
+                line.extend(line_extension)
+                output_lines.append(line)
+
+    with open(args.output, 'w') as ofo:
+        ofo.write("{}\n".format('\t'.join(header)))
+        for line in output_lines:
+            ofo.write("{}\n".format('\t'.join(line)))
+
+
 
 def main():
     args = get_args()
@@ -1785,6 +1876,10 @@ def main():
         make_viral_peptides(args)
     if args.command == 'add-viral-metadata':
         add_viral_metadata(args)
+     if args.command == 'make-fusion-peptides':
+         make_fusion_peptides(args)
+    if args.command == 'add-fusion-metadata':
+        add_fusion_metadata(args)
     if args.command == 'consolidate-multiqc-stats':
         consolidate_multiqc_stats(args)
 
