@@ -290,6 +290,7 @@ process lenstools_get_herv_metadata {
   """
   python ${params.project_dir}/workflow/lenstools/bin/lenstools.py get-herv-metadata ${parstr} -a ${abundances} -n ${netmhcpan} -o ${dataset}-${pat_name}-${prefix}.hervs.metadata.txt
   """
+}
 
 process lenstools_filter_expressed_selfs {
 
