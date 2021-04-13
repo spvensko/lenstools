@@ -102,7 +102,7 @@ process lenstools_filter_expressed_hervs {
   cache false
 
   input:
-  tuple val(pat_name), val(prefix), val(dataset), path(quant)
+  tuple val(pat_name), val(prefix), val(dataset), path(quants)
   val parstr
 
   output:
@@ -110,7 +110,7 @@ process lenstools_filter_expressed_hervs {
 
   script:
   """
-  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py expressed-hervs ${parstr} -a ${quant} -o ${dataset}-${pat_name}-${prefix}.expressed_hervs.txt
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py expressed-hervs ${parstr} -q ${quants} -o ${dataset}-${pat_name}-${prefix}.expressed_hervs.txt
   """
 }
 
@@ -134,7 +134,7 @@ process lenstools_make_herv_peptides {
   """
 }
 
-process lenstools_get_herv_metadata {
+process lenstools_add_herv_metadata {
 
   label "lenstools"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
@@ -142,7 +142,7 @@ process lenstools_get_herv_metadata {
   cache false
 
   input:
-  tuple val(pat_name), val(prefix), val(dataset), path(netmhcpan), path(abundances)
+  tuple val(pat_name), val(prefix), val(dataset), path(netmhcpan), path(quants)
   val parstr
 
   output:
@@ -150,7 +150,7 @@ process lenstools_get_herv_metadata {
 
   script:
   """
-  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py get-herv-metadata ${parstr} -a ${abundances} -n ${netmhcpan} -o ${dataset}-${pat_name}-${prefix}.hervs.metadata.txt
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py add-herv-metadata ${parstr} -q ${quants} -n ${netmhcpan} -o ${dataset}-${pat_name}-${prefix}.hervs.metadata.txt
   """
 }
 
@@ -164,7 +164,7 @@ process lenstools_filter_expressed_selfs {
   cache false
 
   input:
-  tuple val(pat_name), val(prefix), val(dataset), path(quant)
+  tuple val(pat_name), val(prefix), val(dataset), path(quants)
   path gtf
   path gene_list
   val parstr
@@ -174,7 +174,7 @@ process lenstools_filter_expressed_selfs {
 
   script:
   """
-  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py expressed-self-genes ${parstr} -g ${gene_list} --gtf ${gtf} -a ${quant} -o ${dataset}-${pat_name}-${prefix}.expressed_selfs.txt
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py expressed-self-genes ${parstr} -g ${gene_list} --gtf ${gtf} -q ${quants} -o ${dataset}-${pat_name}-${prefix}.expressed_selfs.txt
   """
 }
 
@@ -357,7 +357,7 @@ process lenstools_filter_expressed_variants {
   tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
 
   input:
-  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path(vcf), path(quant)
+  tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path(vcf), path(quants)
   val parstr
 
   output:
@@ -366,7 +366,7 @@ process lenstools_filter_expressed_variants {
   script:
   """
   AVCF=`echo ${vcf}`
-  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py expressed-variants ${parstr} -v ${vcf} -a ${quant} -o \${AVCF%.vcf*}.expfilt.vcf
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py expressed-variants ${parstr} -v ${vcf} -q ${quants} -o \${AVCF%.vcf*}.expfilt.vcf
   sed -i 's/^#\\t/1\\t/g' \${AVCF%.vcf*}.expfilt.vcf
   """
 }
@@ -496,7 +496,7 @@ process lenstools_make_genomic_context {
 
   script:
   """
-  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py make-genomic-context -v ${vcf} -c ${tx_cds} -o ${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix}.snvs.nuc.fa
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py get-genomic-context -v ${vcf} -c ${tx_cds} -o ${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix}.snvs.nuc.fa
   """
 }
 
