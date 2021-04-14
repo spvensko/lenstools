@@ -481,7 +481,7 @@ process lenstools_make_pyclonevi_inputs {
 }
 
 
-process lenstools_make_genomic_context {
+process lenstools_get_snv_genomic_context {
 
   label "lenstools"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
@@ -496,7 +496,7 @@ process lenstools_make_genomic_context {
 
   script:
   """
-  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py get-genomic-context -v ${vcf} -c ${tx_cds} -o ${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix}.snvs.nuc.fa
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py get-snv-genomic-context -v ${vcf} -c ${tx_cds} -o ${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix}.snvs.nuc.fa
   """
 }
 

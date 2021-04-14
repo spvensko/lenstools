@@ -1844,8 +1844,8 @@ def main():
         add_snv_metadata(args)
     if args.command == 'add-indel-metadata':
         add_indel_metadata(args)
-    if args.command == 'make-genomic-context':
-        make_genomic_context(args)
+    if args.command == 'get-snv-genomic-context':
+        get_snv_genomic_context(args)
     if args.command == 'expressed-hervs':
         expressed_hervs(args)
     if args.command == 'make-herv-peptides':
