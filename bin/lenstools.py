@@ -265,15 +265,15 @@ def get_args():
                                            required=True)
 
 
-    parser_get_herv_metadata = subparsers.add_parser('get-herv-metadata',
+    parser_add_herv_metadata = subparsers.add_parser('add-herv-metadata',
                                                      help="Get hERV peptide metadata.")
-    parser_get_herv_metadata.add_argument('-q', '--quants',
+    parser_add_herv_metadata.add_argument('-q', '--quants',
                                           help="Transcript abundance file (.quant)",
                                           required=True)
-    parser_get_herv_metadata.add_argument('-b', '--binding-affinities',
+    parser_add_herv_metadata.add_argument('-b', '--binding-affinities',
                                           help="Binding affinities file (netMHCpan format).",
                                           required=True)
-    parser_get_herv_metadata.add_argument('-o', '--output',
+    parser_add_herv_metadata.add_argument('-o', '--output',
                                           help="Output file.",
                                           required=True)
 
@@ -816,7 +816,7 @@ def filter_vcf_by_expression(args, expressed_txids):
             #print("Transcript: {}".format(transcript))
             if transcript in expressed_txids:
                 filtered_records.append(record)
-    return tuple(set(iltered_records))
+    return tuple(set(filtered_records))
 
 
 def write_expressed_vcf(args, filtered_records):
@@ -1365,7 +1365,7 @@ def make_herv_peptides(args):
 
 
 
-def get_herv_metadata(args):
+def add_herv_metadata(args):
     """
     """
     #tx_abundances = load_tx_abundances(args)
@@ -1850,8 +1850,8 @@ def main():
         expressed_hervs(args)
     if args.command == 'make-herv-peptides':
         make_herv_peptides(args)
-    if args.command == 'get-herv-metadata':
-        get_herv_metadata(args)
+    if args.command == 'add-herv-metadata':
+        add_herv_metadata(args)
     if args.command == 'expressed-self-genes':
         expressed_self_genes(args)
     if args.command == 'make-self-antigen-peptides':
