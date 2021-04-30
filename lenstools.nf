@@ -56,17 +56,19 @@ process lenstools_make_indel_peptides {
   label "lenstools"
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
   tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}"
+  cache false
 
   input:
   tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path(vcf)
   path tx_aa
+  path tx_cds
 
   output:
   tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(dataset), path("*.aa.fa"), emit: peptide_fastas
 
   script:
   """
-  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py make-indel-peptides -v ${vcf} -t ${tx_aa} -o ${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix}.indels.aa.fa
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py make-indel-peptides -v ${vcf} -t ${tx_aa} -c ${tx_cds} -o ${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix}.indels.aa.fa
   """
 }
 
@@ -150,7 +152,7 @@ process lenstools_add_herv_metadata {
 
   script:
   """
-  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py add-herv-metadata ${parstr} -q ${quants} -n ${netmhcpan} -o ${dataset}-${pat_name}-${prefix}.hervs.metadata.txt
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py add-herv-metadata ${parstr} -q ${quants} -b ${netmhcpan} -o ${dataset}-${pat_name}-${prefix}.hervs.metadata.txt
   """
 }
 

@@ -38,28 +38,31 @@ def get_args():
     #since that allows for an 8-mer sliding window in which all sequences contain
     #the mutant peptide.
     parser_make_snv_peptides.add_argument('-l', '--length',
-                                      help="Emitted peptide length.",
-                                      default=8)
+                                          help="Emitted peptide length.",
+                                          default=8)
     parser_make_snv_peptides.add_argument('-o', '--mt-output',
-                                      help="Mutant output file.",
-                                      required=True)
+                                          help="Mutant peptides output file.",
+                                          required=True)
     parser_make_snv_peptides.add_argument('-w', '--wt-output',
-                                      help="Wildtype peptides output file.",
-                                      required=True)
+                                          #Note: Wildtype means REFERENCE! Need
+                                          #to incorporate patient variants for
+                                          #agretopicity calculations.
+                                          help="Wildtype peptides output file.",
+                                          required=True)
 
     #This mode needs more information. How is it to be used? Does one simply
     #pass it the VCF? 
     # Subparser for generating genomic context
-    parser_get_context = subparsers.add_parser('get-genomic-context',
-                                               help="Make nucleotide FASTA file.")
-    parser_get_context.add_argument('-c', '--tx-nucl-fasta',
+    parser_get_context = subparsers.add_parser('get-snv-genomic-context',
+                                               help="Make SNV neoAg nt context FASTA file.")
+    parser_get_context.add_argument('-c', '--tx-cds-fasta',
                                       help="Transcript (CDS) nucleotide sequenes.",
                                       required=True)
     parser_get_context.add_argument('-v', '--vcf',
                                       help="Annotated (snpEff) VCF).",
                                       required=True)
     parser_get_context.add_argument('-l', '--length',
-                                      help="Emitted nucleotide sequence length.",
+                                      help="Emitted nucleotide sequence length (default: 39)",
                                       default=39)
     parser_get_context.add_argument('-o', '--output',
                                       help="output file.",
@@ -74,7 +77,10 @@ def get_args():
     parser_make_indel_peptides.add_argument('-t', '--tx-aa-fasta',
                                             help="Transcript (CDS) amino acid sequences.",
                                             required=True)
-    parser_make_indel_peptides.add_argument('-v', '--vcf',
+    parser_make_indel_peptides.add_argument('-c', '--tx-cds-fasta',
+                                            help="Transcript (CDS) nucleotide sequences.",
+                                            required=True)
+    parser_make_indel_peptides.add_argument('-v', '--somatic-vcf',
                                             help="Annotated (snpEff) VCF).",
                                             required=True)
     parser_make_indel_peptides.add_argument('-l', '--length',
@@ -94,7 +100,7 @@ def get_args():
                                            help="Expression metric (default: TPM).",
                                            default="TPM")
     parser_expressed_variants.add_argument('-r', '--exclude-zeros',
-                                           help="Exclude zero counts when calculating expression percentile.",
+                                           help="Exclude zeros in expression percentile.",
                                            action='store_true')
     parser_expressed_variants.add_argument('-p', '--percentile',
                                            help="Expression percentile for filtering (default: 50).",
@@ -110,14 +116,17 @@ def get_args():
                                            required=True)
 
     # Subparser for filtering variants for having sufficient RNA coverage
+    # This primarily applies to SNVs/InDels now since other variant types are
+    # derived from RNA-Seq reads (e.g. virdetect, hERVQuant, STARFusion,
+    # NeoSplice).
     parser_covered_variants = subparsers.add_parser('rna-covered-variants',
-                                                 help="Filter variants for RNA coverage.")
+                                                 help="Filter variants for evidence in RNA reads.")
     parser_covered_variants.add_argument('-b', '--tumor-rna-bam',
-                                           help="Tumor RNA BAM file.",
-                                           required=True)
+                                         help="Tumor RNA BAM file.",
+                                         required=True)
     parser_covered_variants.add_argument('-c', '--required-coverage',
-                                           help="Required coverage for variants (default: 1)",
-                                           default=1)
+                                         help="Required coverage for variants (default: 1)",
+                                         default=1)
     parser_covered_variants.add_argument('-v', '--vcf',
                                          help="Annotated (snpEff) VCF).",
                                          required=True)
@@ -125,7 +134,7 @@ def get_args():
                                          help="Output file.",
                                          required=True)
 
-    # Subparser for filtering variants for isolation
+    # Subparser for filtering isolated variants (e.g. no proximal germline or somatic variants).
     parser_isolated_variants = subparsers.add_parser('isolated-variants',
                                                      help="Filter isolated variants.")
     parser_isolated_variants.add_argument('-g', '--germline-vcf',
@@ -137,6 +146,7 @@ def get_args():
     parser_isolated_variants.add_argument('-p', '--proximity',
                                            help="Required clearance (in bp) around variants (default: 30).",
                                            default=30)
+    #Allowing proximal silent (het/hom) and homozygous missense variants still needs to be implemented.
     parser_isolated_variants.add_argument('-a', '--allow-silent-and-homozygous',
                                            help="Allow silent and homozygous germline variants near variants.",
                                            action="store_true")
@@ -166,6 +176,9 @@ def get_args():
     parser_make_pvi_inputs.add_argument('-c', '--candidate-vcf',
                                         help="VCF containing candidate variants.",
                                         required=True)
+    #MuTect VCF is specifically referenced here since the parser is designed
+    #around its outputs. This should expanded to include, at least, Strelka2 as
+    #well. 
     parser_make_pvi_inputs.add_argument('-m', '--mutect-vcf',
                                         help="Mutect VCF for variant depth information.",
                                         required=True)
@@ -184,7 +197,7 @@ def get_args():
 
     # Subparser for adding SNV metadata
     parser_add_snv_metadata = subparsers.add_parser('add-snv-metadata',
-                                                   help="Add metadata to SNV binding affinity data.")
+                                                    help="Add metadata to SNV binding affinity data.")
     parser_add_snv_metadata.add_argument('-m', '--mutant-peptides',
                                          help="FASTA file with mutant peptides.",
                                          required=True)
@@ -192,7 +205,7 @@ def get_args():
                                          help="FASTA file with mutant nucleotide context.",
                                          required=True)
     parser_add_snv_metadata.add_argument('-q', '--quants',
-                                         help="Quant file.",
+                                         help="Transcript abundance file (Salmon format).",
                                          required=True)
     parser_add_snv_metadata.add_argument('-c', '--cancer-cell-fraction',
                                          help="Cancer cell fraction file (PyClone-VI format).",
@@ -209,12 +222,12 @@ def get_args():
 
     # Subparser for adding InDel metadata
     parser_add_indel_metadata = subparsers.add_parser('add-indel-metadata',
-                                                   help="Add metadata to InDel binding affinity data.")
+                                                      help="Add metadata to InDel binding affinity data.")
     parser_add_indel_metadata.add_argument('-m', '--mutant-peptides',
                                            help="FASTA file with mutant peptides.",
                                            required=True)
     parser_add_indel_metadata.add_argument('-q', '--quants',
-                                           help="Transcript abundance file (.quant).",
+                                           help="Transcript abundance file (Salmon format).",
                                            required=True)
     parser_add_indel_metadata.add_argument('-c', '--cancer-cell-fraction',
                                            help="Cancer cell fraction file (PyClone-VI format).",
@@ -233,13 +246,13 @@ def get_args():
     parser_expressed_hervs = subparsers.add_parser('expressed-hervs',
                                                    help="Filter expressed hervs.")
     parser_expressed_hervs.add_argument('-q', '--quants',
-                                        help="Transcript abundance file (.quant).",
+                                        help="Transcript abundance file (Salmon format).",
                                         required=True)
     parser_expressed_hervs.add_argument('-m', '--metric',
                                         help="Column for expression from abundance file.",
                                         default="TPM")
     parser_expressed_hervs.add_argument('-r', '--exclude-zeros',
-                                        help="Exclude zero counts when calculating percentile.",
+                                        help="Exclude zeros for expression percentile.",
                                         action='store_true')
     parser_expressed_hervs.add_argument('-p', '--percentile',
                                         help="Expression percentile for filtering expression. (default: 50)",
@@ -264,11 +277,11 @@ def get_args():
                                            help="Output file.",
                                            required=True)
 
-
+    # Subparser for adding hERV metadata
     parser_add_herv_metadata = subparsers.add_parser('add-herv-metadata',
-                                                     help="Get hERV peptide metadata.")
+                                                     help="Add hERV peptide metadata.")
     parser_add_herv_metadata.add_argument('-q', '--quants',
-                                          help="Transcript abundance file (.quant)",
+                                          help="Transcript abundance file (Salmon format).",
                                           required=True)
     parser_add_herv_metadata.add_argument('-b', '--binding-affinities',
                                           help="Binding affinities file (netMHCpan format).",
@@ -291,13 +304,13 @@ def get_args():
     parser_expressed_self_genes = subparsers.add_parser('expressed-self-genes',
                                                         help="Filter expressed self-antigen genes.")
     parser_expressed_self_genes.add_argument('-q', '--quants',
-                                             help="Transcript abundance file (.quant).",
+                                             help="Transcript abundance file (Salmon format).",
                                              required=True)
     parser_expressed_self_genes.add_argument('-m', '--metric',
                                              help="Expression metric.",
                                              default="TPM")
     parser_expressed_self_genes.add_argument('-r', '--exclude-zeros',
-                                             help="Exclude zero counts when calculating percentile.",
+                                             help="Exclude zeros for expression percentile.",
                                              action='store_true')
     parser_expressed_self_genes.add_argument('-p', '--percentile',
                                              help="Expression percentile for filtering expression (default: 50).",
@@ -340,7 +353,7 @@ def get_args():
     parser_add_self_metadata = subparsers.add_parser('add-self-antigen-metadata',
                                                      help="Add self-antigen metadata.")
     parser_add_self_metadata.add_argument('-q', '--quants',
-                                          help="Transcript abundance file (.quant).",
+                                          help="Transcript abundance file (Salmon format).",
                                           required=True)
     parser_add_self_metadata.add_argument('-b', '--binding-affinities',
                                           help="Binding affinitities data (netMHCpan format)",
@@ -353,7 +366,7 @@ def get_args():
                                           required=True)
 
 
-   # Subparser for filtering virdetect outputs for expressed viruses
+    # Subparser for filtering virdetect outputs for expressed viruses
     parser_filter_virdetect_by_counts = subparsers.add_parser('filter-virdetect-by-counts',
                                                    help="Generate list of expressed viruses")
     parser_filter_virdetect_by_counts.add_argument('-q', '--viral-quants',
@@ -429,8 +442,7 @@ def get_args():
 
 def load_tx_aas(args):
     """
-    Loads a transcript -> amino acid sequence FASTA.
-    
+    Loads a transcript -> amino acid sequence FASTA into a dictionary.
     """
     tx_to_aa = {}
     for seq_record in SeqIO.parse(args.tx_aa_fasta, "fasta"):
@@ -441,7 +453,7 @@ def load_tx_aas(args):
 
 def load_tx_cds(args):
     """
-    Loads a transcript -> nucleotide sequence FASTA.
+    Loads a transcript -> nucleotide sequence FASTA into a dictionary.
     """
     tx_to_cds = {}
     for seq_record in SeqIO.parse(args.tx_cds_fasta, "fasta"):
@@ -450,24 +462,23 @@ def load_tx_cds(args):
     return tx_to_cds
 
 
-def extract_missense_snvs(args):
+def extract_missense_snvs(input_vcf):
     """
+    Extracts missense SNVs from annotated somatic VCF file.
     """
     filtered_records = []
 
     vcf_reader = ''
-    if args.vcf.endswith('gz'):
-        vcf_reader = vcf.Reader(open(args.vcf), 'r', compressed=True)
+    if input_vcf.endswith('gz'):
+        vcf_reader = vcf.Reader(open(input_vcf), 'r', compressed=True)
     else:
-        vcf_reader = vcf.Reader(open(args.vcf), 'r')
+        vcf_reader = vcf.Reader(open(input_vcf), 'r')
 
     for record in vcf_reader:
-        print(record)
         annotations = [x for x in record.INFO['ANN']]
         for annotation in annotations:
             effects = annotation.split('|')
             variant_effect = effects[1]
-            #What is effects[13] here? amino acid location.
             if variant_effect == 'missense_variant' and effects[13]:
                 transcript = effects[6]
                 seq3_change = effects[10].lstrip('p.')
@@ -475,11 +486,11 @@ def extract_missense_snvs(args):
                 orig_seq3 = seq3_change[0]
                 alt_seq3 = seq3_change[2]
                 pos = seq3_change[1]
-                orig_aa = seq1(orig_seq)
-                alt_aa = seq1(alt_seq)
+                orig_aa = seq1(orig_seq3)
+                alt_aa = seq1(alt_seq3)
                 tlen = effects[13].split('/')[1]
                 codon_pos = int((int(effects[13].split('/')[0])*3) - 2)
-                filtered_records.append([transcript, pos, tlen, pre1, post1, codon_pos, record])
+                filtered_records.append([transcript, pos, tlen, orig_aa, alt_aa, codon_pos, record])
     return filtered_records
 
 #def extract_potential_somatic_nuc_changes(args):
@@ -516,25 +527,47 @@ def extract_missense_snvs(args):
 #
 #    return filtered_records
 
-def extract_inframe_indels(args):
+def extract_conservative_inframe_indels(args):
     """
     This will need to be cleaned heavily, but good for now.
 
     Focusing on deletions now, need to find a good example of a conservative_inframe_insertion
     """
     filtered_records = []
-    if args.vcf.endswith('gz'):
-        vcf_reader = vcf.Reader(open(args.vcf), 'r', compressed=True)
+    if args.somatic_vcf.endswith('gz'):
+        vcf_reader = vcf.Reader(open(args.somatic_vcf), 'r', compressed=True)
     else:
-        vcf_reader = vcf.Reader(open(args.vcf), 'r')
+        vcf_reader = vcf.Reader(open(args.somatic_vcf), 'r')
     
     for record in vcf_reader:
         annotations = [x for x in record.INFO['ANN']]
         for annotation in annotations:
             effects = annotation.split('|')
-            if re.search('^conservative_inframe_[a-z]+$', effects[1]) and split_possible[13]:
-                transcript = split_possible[6]
-                seq3_change = split_possible[10].lstrip('p.')
+            if re.search('^conservative_inframe_[a-z]+$', effects[1]) and effects[13]:
+                transcript = effects[6]
+                seq3_change = effects[10].lstrip('p.')
+                filtered_records.append([transcript, seq3_change, record])
+    return filtered_records
+
+def extract_disruptive_inframe_indels(args):
+    """
+    This will need to be cleaned heavily, but good for now.
+
+    Focusing on deletions now, need to find a good example of a conservative_inframe_insertion
+    """
+    filtered_records = []
+    if args.somatic_vcf.endswith('gz'):
+        vcf_reader = vcf.Reader(open(args.somatic_vcf), 'r', compressed=True)
+    else:
+        vcf_reader = vcf.Reader(open(args.somatic_vcf), 'r')
+    
+    for record in vcf_reader:
+        annotations = [x for x in record.INFO['ANN']]
+        for annotation in annotations:
+            effects = annotation.split('|')
+            if re.search('^disruptive_inframe_[a-z]+$', effects[1]) and effects[13]:
+                transcript = effects[6]
+                seq3_change = effects[10].lstrip('p.')
                 filtered_records.append([transcript, seq3_change, record])
     return filtered_records
 
@@ -545,18 +578,18 @@ def extract_frameshift_indels(args):
     Focusing on deletions now, need to find a good example of a conservative_inframe_insertion
     """
     filtered_records = []
-    if args.vcf.endswith('gz'):
-        vcf_reader = vcf.Reader(open(args.vcf), 'r', compressed=True)
+    if args.somatic_vcf.endswith('gz'):
+        vcf_reader = vcf.Reader(open(args.somatic_vcf), 'r', compressed=True)
     else:
-        vcf_reader = vcf.Reader(open(args.vcf), 'r')
+        vcf_reader = vcf.Reader(open(args.somatic_vcf), 'r')
     
     for record in vcf_reader:
         annotations = [x for x in record.INFO['ANN']]
         for annotation in annotations:
             effects = annotation.split('|')
-            if re.search('^frameshift_variant$', effects[1]) and split_possible[13]:
-                transcript = split_possible[6]
-                dna_change = split_possible[9].lstrip('c.')
+            if re.search('^frameshift_variant$', effects[1]) and effects[13] and effects[7] == 'protein_coding' and effects[-1] == '':
+                transcript = effects[6]
+                dna_change = effects[9].lstrip('c.')
                 filtered_records.append([transcript, dna_change, record])
     return filtered_records
 
@@ -564,7 +597,7 @@ def make_snv_peptides(args):
     """
     """
     tx_to_aa = load_tx_aas(args)
-    missense_snvs = extract_missense_snvs(args)
+    missense_snvs = extract_missense_snvs(args.somatic_vcf)
     mutant_peptides = {}
     reference_peptides = {}
     for record in missense_snvs:
@@ -585,15 +618,16 @@ def make_snv_peptides(args):
         ref_peptide = ''.join(tx_ref_seq[max(pos-8+1,0):min(pos+8, len(mut_seq))])
         mut_peptide = ''.join(mut_seq[max(pos-8+1, 0):min(pos+8, len(mut_seq))])
         header_mut_peptide = ''.join(mut_seq[max(pos-13, 0):min(pos+14, len(mut_seq))])
+        #var_md5 is being used to create a unique identifier for the resulting mutant peptide to overcome netMHCpan's length limitations.
         var_md5 = hashlib.md5("{}".format(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)]))).hexdigest()[:16]
         mutant_peptides["{} {}:{} {} {} {} {}".format(var_md5, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT, header_mut_peptide)] = mut_peptide
         reference_peptides["{} {}:{} {} {} {}".format(var_md5, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT)] = ref_peptide
 
     with open(args.mt_output, 'w') as ofo:
-        for k, v in emitted_peptides.items():
+        for k, v in mutant_peptides.items():
             ofo.write('>{}\n{}\n'.format(k, v))
     with open(args.wt_output, 'w') as ofo:
-        for k, v in wildtype_peptides.items():
+        for k, v in reference_peptides.items():
             ofo.write('>{}\n{}\n'.format(k, v))
 
 
@@ -601,7 +635,7 @@ def get_snv_genomic_context(args):
     """
     """
     tx_to_cds = load_tx_cds(args)
-    missense_snvs = extract_missense_snvs(args)
+    missense_snvs = extract_missense_snvs(args.vcf)
     emitted_nucs = {}
     for record in missense_snvs:
         if record[0] not in tx_to_cds.keys():
@@ -622,8 +656,8 @@ def get_snv_genomic_context(args):
         mut_nuc = ''.join(mut_seq[max(codon_pos-args.length, 0):min(codon_pos+args.length, len(mut_seq)) + 3])
         print("{}\n{}\n{}".format(record[0],ref_nuc, mut_nuc))
         print(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)]))
-        var_md5sum = hashlib.md5("{}".format(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)])).encode('utf-8')).hexdigest()[:16]
-        emitted_nucs["{}\t{}:{}\t{}\t{}\t{}".format(var_md5sum, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT)] = mut_nuc
+        var_md5 = hashlib.md5("{}".format(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)])).encode('utf-8')).hexdigest()[:16]
+        emitted_nucs["{}\t{}:{}\t{}\t{}\t{}".format(var_md5, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT)] = mut_nuc
 
     with open(args.output, 'w') as ofo:
         for k, v in emitted_nucs.items():
@@ -633,35 +667,269 @@ def make_indel_peptides(args):
     """
     """
     tx_to_aa = load_tx_aas(args)
-    inframe_indels = extract_inframe_indels(args)
+    tx_nv_to_aa = {}
+    for k, v in tx_to_aa.items():
+        k_no_version = k.split('.')[0]
+        tx_nv_to_aa[k_no_version] =  v
+    tx_to_cds = load_tx_cds(args)
+    tx_nv_to_cds = {}
+    for k, v in tx_to_cds.items():
+        k_no_version = k.split('.')[0]
+        tx_nv_to_cds[k_no_version] =  v
+    print("Getting indels")
+    conserv_inframe_indels = extract_conservative_inframe_indels(args)
+    disrupt_inframe_indels = extract_disruptive_inframe_indels(args)
     frameshift_indels = extract_frameshift_indels(args)
+    print("Got indels")
+#    print(conserv_inframe_indels)
+#    print(disrupt_inframe_indels)
+#    print(frameshift_indels)
 
     mutant_peptides = {}
 
-    for record in inframe_indels:
-        if record[0] not in tx_to_aa.keys():
+    all_indels = conserv_inframe_indels[:]
+    all_indels.extend(disrupt_inframe_indels)
+#    print(all_indels)
+
+    for record in all_indels:
+        print(record[0])
+        tx_no_version = record[0].split('.')[0]
+        if record[0] not in tx_to_aa.keys() and tx_no_version not in tx_nv_to_aa.keys():
             continue
-        tx_ref_seq = list(tx_to_aa[record[0]])
+        tx_ref_seq = []
+        if record[0] in tx_to_aa.keys():
+            tx_ref_seq = list(tx_to_aa[record[0]])
+        elif tx_no_version in tx_nv_to_aa.keys():
+            tx_ref_seq = list(tx_nv_to_aa[tx_no_version])
         mut_seq = tx_ref_seq[:]
+        print(record[1])
         if re.search("del$", record[1]):
             del_rec = record[1].strip('del')
             start_pos = int(del_rec.split('_')[0][3:]) - 1
             start_aa = seq1(del_rec.split('_')[0][:3])
-            stop_pos = int(del_rec.split('_')[1][3:]) - 1
-            stop_aa = seq1(del_rec.split('_')[1][:3])
+            stop_pos = 0
+            stop_aa = 'foo'
+            # Dealing with single amino acid deletions
+            if re.search('_', del_rec):
+                stop_pos = int(del_rec.split('_')[1][3:]) - 1
+                stop_aa = seq1(del_rec.split('_')[1][:3])
+            else:
+                stop_pos = start_pos
+                stop_aa = start_aa
+            print("{} {}".format(start_pos, start_aa))
+            print("{} {}".format(stop_pos, stop_aa))
+            if start_pos > len(mut_seq) or stop_pos > len(mut_seq):
+                print("The mutation occurs outside of the peptide sequence. Check transcript versions.")
+                continue
+            if mut_seq[start_pos] != start_aa or mut_seq[stop_pos] != stop_aa:
+                print("Reference amino acid doesn't match! Something has gone horribly wrong.")
+                continue
+            new_mut_seq = ''.join(mut_seq[:start_pos] + mut_seq[stop_pos+1:])
+            ref_peptide = ''.join(tx_ref_seq[max(start_pos-7,0):min(stop_pos+7, len(mut_seq))])
+            mut_peptide = ''.join(new_mut_seq[max(start_pos-7, 0):min(start_pos+7, len(new_mut_seq))])
+            print("Starting peptide: {}".format(ref_peptide))
+            print("mutated peptide: {}".format(mut_peptide))
+            md5able_str = "{}".format(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)])).encode('utf-8')
+            var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
+            mutant_peptides["{} {}:{} {} {} {} {}".format(var_md5, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT, 'inframe_deletion')] = mut_peptide
+        elif re.search("[0-9]ins", record[1]):
+            ins_rec, spacer, ins_seq = record[1].partition('ins')
+            ins_seq1 = seq1(ins_seq)
+            print(ins_seq1)
+            insert_pos = int(ins_rec.split('_')[0][3:]) - 1
+            insert_aa = seq1(ins_rec.split('_')[0][:3])
+            insert_plus_one_pos = int(ins_rec.split('_')[1][3:]) - 1
+            insert_plus_one_aa = seq1(ins_rec.split('_')[1][:3])
+            if mut_seq[insert_pos] != insert_aa or mut_seq[insert_plus_one_pos] != insert_plus_one_aa:
+                print("Reference amino acid doesn't match! Something has gone horribly wrong.")
+                continue
+            new_mut_seq = ''.join(mut_seq[:insert_pos+1] + [ins_seq1] + mut_seq[insert_plus_one_pos:])
+            mut_peptide = ''.join(new_mut_seq[max(insert_pos-6, 0):min(insert_plus_one_pos+len(ins_seq1)+7, len(new_mut_seq))])
+            ref_peptide = ''.join(mut_seq[max(insert_pos-6,0):min(insert_plus_one_pos+7, len(mut_seq))])
+            print("Starting peptide: {}".format(ref_peptide))
+            print("mutated peptide: {}".format(mut_peptide))
+            md5able_str = "{}".format(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)])).encode('utf-8')
+            var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
+            mutant_peptides["{} {}:{} {} {} {} {}".format(var_md5, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT, 'inframe_insertion')] = mut_peptide
+        elif re.search("delins", record[1]):
+            del_rec, buffer, ins_rec = record[1].partition('delins')
+            ins_seq1 = seq1(ins_rec)
+            print(ins_seq1)
+            start_pos = int(del_rec.split('_')[0][3:]) - 1
+            start_aa = seq1(del_rec.split('_')[0][:3])
+            stop_pos = 0
+            stop_aa = 'foo'
+            # Dealing with single amino acid deletions
+            if re.search('_', del_rec):
+                stop_pos = int(del_rec.split('_')[1][3:]) - 1
+                stop_aa = seq1(del_rec.split('_')[1][:3])
+            else:
+                stop_pos = start_pos
+                stop_aa = start_aa
             print("{} {}".format(start_pos, start_aa))
             print("{} {}".format(stop_pos, stop_aa))
             if mut_seq[start_pos] != start_aa or mut_seq[stop_pos] != stop_aa:
                 print("Reference amino acid doesn't match! Something has gone horribly wrong.")
                 continue
-            new_mut_seq = ''.join(mut_seq[:start_pos] + mut_seq[stop_pos+1:])
-            ref_peptide = ''.join(tx_ref_seq[max(start_pos-8,0):min(stop_pos+8, len(mut_seq))])
-            mut_peptide = ''.join(new_mut_seq[max(start_pos-8, 0):min(start_pos+8, len(new_mut_seq))])
-            var_md5 = hashlib.md5("{}".format(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)]))).hexdigest()[:16]
-            emitted_peptides["{} {}:{} {} {} {}".format(var_md5, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT)] = mut_peptide
+            del_mut_seq = ''.join(mut_seq[:start_pos] + mut_seq[stop_pos+1:])
+            ins_mut_seq = ''.join(del_mut_seq[:start_pos] + ins_seq1 + del_mut_seq[start_pos:])
+            mut_peptide = ''.join(ins_mut_seq[max(start_pos-7, 0):min(start_pos+len(ins_seq1)+7, len(ins_mut_seq))])
+            ref_peptide = ''.join(mut_seq[max(start_pos-7,0):min(stop_pos+len(ins_seq1)+7, len(mut_seq))])
+            print("Starting peptide: {}".format(ref_peptide))
+            print("mutated peptide: {}".format(mut_peptide))
+            md5able_str = "{}".format(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)])).encode('utf-8')
+            var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
+            mutant_peptides["{} {}:{} {} {} {} {}".format(var_md5, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT, 'inframe_indel')] = mut_peptide
+        elif re.search("dup", record[1]):
+            dup_rec = record[1].strip('dup')
+            start_pos = int(dup_rec.split('_')[0][3:]) - 1
+            start_aa = seq1(dup_rec.split('_')[0][:3])
+            stop_pos = 0
+            stop_aa = 'foo'
+            # Dealing with single amino acid deletions
+            if re.search('_', dup_rec):
+                stop_pos = int(dup_rec.split('_')[1][3:]) - 1
+                stop_aa = seq1(dup_rec.split('_')[1][:3])
+            else:
+                stop_pos = start_pos
+                stop_aa = start_aa
+            print("{} {}".format(start_pos, start_aa))
+            print("{} {}".format(stop_pos, stop_aa))
+            if start_pos > len(mut_seq) or stop_pos > len(mut_seq):
+                print("The mutation occurs outside of the peptide sequence. Check transcript versions.")
+                continue
+            if mut_seq[start_pos] != start_aa or mut_seq[stop_pos] != stop_aa:
+                print("Reference amino acid doesn't match! Something has gone horribly wrong.")
+                continue
+            duped_seq = mut_seq[start_pos:stop_pos+1]
+            new_mut_seq = mut_seq[:start_pos] + duped_seq + mut_seq[start_pos:]
+            mut_peptide = ''.join(new_mut_seq[max(stop_pos-6, 0):min(start_pos+len(duped_seq)+7, len(new_mut_seq))])
+            print("Duped seq: {}".format(''.join(duped_seq)))
+            print("Ref seq: {}".format(''.join(mut_seq[start_pos-5:stop_pos+5])))
+            print("Mut seq: {}".format(''.join(new_mut_seq[start_pos-5:stop_pos+5])))
+            print("Mut peptide: {}".format(mut_peptide))
+            md5able_str = "{}".format(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)])).encode('utf-8')
+            var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
+            mutant_peptides["{} {}:{} {} {} {} {}".format(var_md5, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT, 'inframe_dup')] = mut_peptide
+
+    for record in frameshift_indels:
+        tx_no_version = record[0].split('.')[0]
+        if record[0] not in tx_to_aa.keys() and tx_no_version not in tx_nv_to_aa.keys():
+            continue
+        tx_ref_seq = []
+        if record[0] in tx_to_cds.keys():
+            tx_ref_seq = list(tx_to_cds[record[0]])
+        elif tx_no_version in tx_nv_to_cds.keys():
+            tx_ref_seq = list(tx_nv_to_cds[tx_no_version])
+        mut_seq = tx_ref_seq[:]
+        if re.search("del", record[1]):
+            print("Frameshift deletion {}".format(record))
+            del_rec, buffer, del_seq = record[1].partition('del')
+            print(del_rec)
+            print(del_seq)
+            start_pos = 0
+            stop_pos = 0
+            start_base = 'A'
+            stop_base = 'A'
+            if re.search('_', del_rec):
+                 start_pos = int(del_rec.split('_')[0]) - 1
+                 start_base = del_seq[0]
+                 stop_pos = int(del_rec.split('_')[1]) - 1
+                 stop_base = del_seq[-1]
+            else:
+                start_pos = int(del_rec) - 1
+                start_base = del_seq[0]
+                stop_pos = start_pos
+                stop_base = start_base
+            print("{} {}".format(start_pos, start_base))
+            print("{} {}".format(stop_pos, stop_base))
+            if stop_pos > len(mut_seq):
+                continue
+            new_mut_seq = mut_seq[:start_pos] + mut_seq[stop_pos+1:]
+            translated_ref = str(Seq(''.join(mut_seq)).translate(to_stop=True, cds=False))
+            translated_mut = str(Seq(''.join(new_mut_seq)).translate(to_stop=True, cds=False))
+            aa_start = int(start_pos/3)
+            aa_stop = int(stop_pos/3)
+            print("{}\t{}".format(aa_start, aa_stop))
+            mut_peptide = translated_mut[aa_start-7:]
+            md5able_str = "{}".format(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)])).encode('utf-8')
+            var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
+            mutant_peptides["{} {}:{} {} {} {} {}".format(var_md5, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT, 'frameshift_deletion')] = mut_peptide
+        if re.search("ins", record[1]):
+            print("Frameshift insertion {}".format(record))
+            ins_rec, buffer, ins_seq = record[1].partition('ins')
+            print(ins_rec)
+            print(ins_seq)
+            start_pos = 0
+            stop_pos = 0
+            start_base = 'A'
+            stop_base = 'A'
+            if re.search('_', ins_rec):
+                 start_pos = int(ins_rec.split('_')[0]) - 1
+                 start_base = ins_seq[0]
+                 stop_pos = int(ins_rec.split('_')[1]) - 1
+                 stop_base = ins_seq[-1]
+            else:
+                start_pos = int(ins_rec) - 1
+                start_base = ins_seq[0]
+                stop_pos = start_pos
+                stop_base = start_base
+            print("{} {}".format(start_pos, start_base))
+            print("{} {}".format(stop_pos, stop_base))
+            if stop_pos > len(mut_seq):
+                continue
+            new_mut_seq = mut_seq[:start_pos] + [ins_seq] +  mut_seq[stop_pos:]
+            translated_ref = str(Seq(''.join(mut_seq)).translate(to_stop=True, cds=False))
+            translated_mut = str(Seq(''.join(new_mut_seq)).translate(to_stop=True, cds=False))
+            aa_start = int(start_pos/3)
+            aa_stop = int(stop_pos/3)
+            print("{}\t{}".format(aa_start, aa_stop))
+            print(translated_ref[aa_start-5:aa_stop+5])
+            print(translated_mut[aa_start-5:aa_stop+5])
+            mut_peptide = translated_mut[aa_start-7:]
+            md5able_str = "{}".format(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)])).encode('utf-8')
+            var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
+            mutant_peptides["{} {}:{} {} {} {} {}".format(var_md5, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT, 'frameshift_insertion')] = mut_peptide
+        if re.search("dup", record[1]):
+            print("Frameshift duplication {}".format(record))
+            dup_rec, buffer, dup_seq = record[1].partition('dup')
+            print(dup_rec)
+            print(dup_seq)
+            start_pos = 0
+            stop_pos = 0
+            start_base = 'A'
+            stop_base = 'A'
+            if re.search('_', dup_rec):
+                 start_pos = int(dup_rec.split('_')[0]) - 1
+                 start_base = dup_seq[0]
+                 stop_pos = int(dup_rec.split('_')[1]) - 1
+                 stop_base = dup_seq[-1]
+            else:
+                start_pos = int(dup_rec) - 1
+                start_base = dup_seq[0]
+                stop_pos = start_pos
+                stop_base = start_base
+            print("{} {}".format(start_pos, start_base))
+            print("{} {}".format(stop_pos, stop_base))
+            if stop_pos > len(mut_seq):
+                continue
+            new_mut_seq = mut_seq[:start_pos] + [dup_seq] +  mut_seq[stop_pos:]
+            translated_ref = str(Seq(''.join(mut_seq)).translate(to_stop=True, cds=False))
+            translated_mut = str(Seq(''.join(new_mut_seq)).translate(to_stop=True, cds=False))
+            aa_start = int(start_pos/3)
+            aa_stop = int(stop_pos/3)
+            print("{}\t{}".format(aa_start, aa_stop))
+            print(translated_ref[aa_start-5:aa_stop+5])
+            print(translated_mut[aa_start-5:aa_stop+5])
+            mut_peptide = translated_mut[aa_start-7:]
+            md5able_str = "{}".format(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)])).encode('utf-8')
+            var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
+            mutant_peptides["{} {}:{} {} {} {} {}".format(var_md5, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT, 'frameshift_duplciation')] = mut_peptide
+
+
 
     with open(args.output, 'w') as ofo:
-        for k, v in emitted_peptides.items():
+        for k, v in mutant_peptides.items():
             ofo.write('>{}\n{}\n'.format(k, v))
 
 
@@ -1391,7 +1659,7 @@ def add_herv_metadata(args):
 
     output_lines = []
 
-    with open(args.netmhcpan) as mno:
+    with open(args.binding_affinities) as mno:
         for line_idx, line in enumerate(mno.readlines()):
             line = line.rstrip()
             line = line.split()
@@ -1827,7 +2095,7 @@ def main():
     args = get_args()
     #print(args)
     if args.command == 'make-snv-peptides':
-        make_snv_eptides(args)
+        make_snv_peptides(args)
     if args.command == 'make-indel-peptides':
         make_indel_peptides(args)
     if args.command == 'expressed-variants':
