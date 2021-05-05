@@ -641,14 +641,14 @@ def get_snv_genomic_context(args):
         if record[0] not in tx_to_cds.keys():
             continue
         tx_ref_seq = list(tx_to_cds[record[0]])
-        if len(tx_ref_seq) != int(record[2]):
-            print("transcript {} shows different lengths between peptide fasta ({}) and snpeff! ({})".format(record[0], record[2], len(tx_ref_seq)))
+#        if len(tx_ref_seq) != int(record[2]):
+#            print("transcript {} shows different lengths between peptide fasta ({}) and snpeff! ({})".format(record[0], record[2], len(tx_ref_seq)))
 
         mut_seq = tx_ref_seq[:]
         pos = int(record[1]) - 1
-        if mut_seq[pos] != record[3]:
-            print("Reference amino acid doesn't match! Something has gone horribly wrong.")
-            continue
+#        if mut_seq[pos] != record[3]:
+#            print("Reference amino acid doesn't match! Something has gone horribly wrong.")
+#            continue
         # Have to be careful here... we want to start at the first base of the affected codon
         mut_seq[pos] = record[4]
         codon_pos = record[5] - 1
@@ -924,7 +924,7 @@ def make_indel_peptides(args):
             mut_peptide = translated_mut[aa_start-7:]
             md5able_str = "{}".format(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)])).encode('utf-8')
             var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
-            mutant_peptides["{} {}:{} {} {} {} {}".format(var_md5, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT, 'frameshift_duplciation')] = mut_peptide
+            mutant_peptides["{} {}:{} {} {} {} {}".format(var_md5, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT, 'frameshift_duplication')] = mut_peptide
 
 
 
@@ -1244,13 +1244,13 @@ def add_snv_metadata(args):
                 checksum_to_meta_map[checksum]["alt"] = alt
                 checksum_to_meta_map[checksum]["aa_context"] = aa_context
 
-    with open(args.mutant_nucs) as mno:
-        for line in mno.readlines():
-            if line.startswith('>'):
-                line = line.rstrip().split('\t')
-                checksum = line[0].lstrip('>')[:-1]
-                nuc_context = line[-1]
-                checksum_to_meta_map[checksum]["nuc_context"] = nuc_context
+#    with open(args.mutant_nucs) as mno:
+#        for line in mno.readlines():
+#            if line.startswith('>'):
+#                line = line.rstrip().split('\t')
+#                checksum = line[0].lstrip('>')[:-1]
+#                nuc_context = line[-1]
+#                checksum_to_meta_map[checksum]["nuc_context"] = nuc_context
 
     tx_to_tpm = {}
     with open(args.quants) as qfo:
@@ -1272,7 +1272,9 @@ def add_snv_metadata(args):
             if len(line) > 3 and line[2] == 'transcript':
                 gene_name = str(line).split('gene_name "')[1].split('"')[0]
                 tx_id = str(line).split('transcript_id "')[1].split('"')[0]
+                tx_id_no_version = str(line).split('transcript_id "')[1].split('"')[0].split('.')[0]
                 tx_to_gene[tx_id] = gene_name
+                tx_to_gene[tx_id_no_version] = gene_name
 
 
     var_to_ccf = {}
@@ -1296,7 +1298,8 @@ def add_snv_metadata(args):
                     header.remove('BindLevel')
                 except:
                     pass
-                header.extend(['gene_name', 'tx_id', 'variant_position', 'reference_allele', 'alternate_allele', 'tpm', 'ccf', 'amino_acid_context', 'nucleotide_context'])
+#                header.extend(['gene_name', 'tx_id', 'variant_position', 'reference_allele', 'alternate_allele', 'tpm', 'ccf', 'amino_acid_context', 'nucleotide_context'])
+                header.extend(['gene_name', 'tx_id', 'variant_position', 'reference_allele', 'alternate_allele', 'tpm', 'ccf', 'amino_acid_context'])
             if len(line) < 16:
                 continue
             if line[10] not in checksum_to_meta_map.keys():
@@ -1308,15 +1311,16 @@ def add_snv_metadata(args):
             ref = checksum_to_meta_map[csum]['ref']
             alt = checksum_to_meta_map[csum]['alt'].replace('[','').replace(']','')
             tpm = tx_to_tpm[tx_id]
+            print(checksum_to_meta_map[csum])
             aa_context = checksum_to_meta_map[csum]['aa_context']
-            nuc_context = checksum_to_meta_map[csum]['nuc_context']
-            translated_nuc = str(Seq(nuc_context).translate()).replace('*', '')
-            if translated_nuc != aa_context:
-                print("One of your antigen's nucleotide context does not match the amino acid context. Check this!")
-                print(nuc_context)
-                print(translated_nuc)
-                print(aa_context)
-                sys.exit()
+#            nuc_context = checksum_to_meta_map[csum]['nuc_context']
+#            translated_nuc = str(Seq(nuc_context).translate()).replace('*', '')
+#            if translated_nuc != aa_context:
+#                print("One of your antigen's nucleotide context does not match the amino acid context. Check this!")
+#                print(nuc_context)
+#                print(translated_nuc)
+#                print(aa_context)
+#                sys.exit()
             ccf = 'NA'
             if var_pos in var_to_ccf.keys():
                 ccf = var_to_ccf[var_pos]
@@ -1325,7 +1329,8 @@ def add_snv_metadata(args):
                 line.remove('SB')
             if 'WB' in line:
                 line.remove('WB')
-            line.extend([gene_name, tx_id, var_pos, ref, alt, tpm, ccf, aa_context, nuc_context])
+#            line.extend([gene_name, tx_id, var_pos, ref, alt, tpm, ccf, aa_context, nuc_context])
+            line.extend([gene_name, tx_id, var_pos, ref, alt, tpm, ccf, aa_context])
             new_lines.append(line)
 
     with open(args.output, 'w') as ofo:
@@ -1371,6 +1376,8 @@ def add_indel_metadata(args):
             if len(line) > 3 and line[2] == 'transcript':
                 gene_name = str(line).split('gene_name "')[1].split('"')[0]
                 tx_id = str(line).split('transcript_id "')[1].split('"')[0]
+                tx_id_no_version = str(line).split('transcript_id "')[1].split('"')[0].split('.')[0]
+                tx_to_gene[tx_id_no_version] = gene_name
                 tx_to_gene[tx_id] = gene_name
 
     var_to_ccf = {}
@@ -1385,7 +1392,7 @@ def add_indel_metadata(args):
     header = []
 
     new_lines = []
-    with open(args.netmhcpan) as mno:
+    with open(args.binding_affinities) as mno:
         for line_idx, line in enumerate(mno.readlines()):
             print(line)
             line = line.rstrip()
@@ -1673,6 +1680,11 @@ def add_herv_metadata(args):
             if len(line) < 16 or line[0] in ['Protein', 'Pos']:
                 continue
             else:
+                if 'SB' in line:
+                    line.remove('<=')
+                    line.remove('SB')
+                if 'WB' in line:
+                    line.remove('WB')
                 print(line)
                 tpm = tx_to_tpm[line[10]]
                 line.extend([tpm])
@@ -1699,9 +1711,9 @@ def expressed_self_genes(args):
         tx_threshold = float(args.abundance_threshold)
     expressed_txids = get_expressed_txs(args, tx_threshold)
     print(expressed_txids[:10])
-    #print("tx_thresshold: {}".format(tx_threshold))
-    #print("# of expressed transcripts: {}".format(len(expressed_txids)))
-    #print("Some expressed transcripts: {}".format(expressed_txids[:10]))
+    print("tx_thresshold: {}".format(tx_threshold))
+    print("# of expressed transcripts: {}".format(len(expressed_txids)))
+    print("Some expressed transcripts: {}".format(expressed_txids[:10]))
     #print("# of filtered transcripts: {}".format(len(filtered_records)))
 
 
@@ -2008,6 +2020,11 @@ def add_viral_metadata(args):
             if len(line) < 16 or line[0] in ['Protein', 'Pos']:
                 continue
             else:
+                if 'SB' in line:
+                    line.remove('<=')
+                    line.remove('SB')
+                if 'WB' in line:
+                    line.remove('WB')
                 virus_id = cds_to_virus[line[10].replace('_1', '.1')]
                 read_counts = expressed_viruses[virus_id]
                 print(read_counts)

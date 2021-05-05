@@ -34,18 +34,20 @@ process lenstools_add_snv_metadata {
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
   tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}_${rna_prefix}"
   cache false
+  publishDir "${lens_out_dir}"
 
   input:
   tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(rna_prefix), val(dataset), path(netmhcpan_input), path(mutant_fasta), path(pcvi), path(mutant_nucs), path(quants)
   path gtf
   val parstr
+  val lens_out_dir
 
   output:
   tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(rna_prefix), val(dataset), path("*metadata.txt"), emit: metadatas
 
   script:
   """
-  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py add-snv-metadata -n ${netmhcpan_input} -m ${mutant_fasta} -q ${quants} -u ${mutant_nucs} -g ${gtf} -c ${pcvi}  -o ${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix}_${rna_prefix}.snv.metadata.txt
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py add-snv-metadata -b ${netmhcpan_input} -m ${mutant_fasta} -q ${quants} -u ${mutant_nucs} -g ${gtf} -c ${pcvi}  -o ${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix}_${rna_prefix}.snv.metadata.txt
   """
 }
 
@@ -79,18 +81,20 @@ process lenstools_add_indel_metadata {
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
   tag "${dataset}/${pat_name}/${norm_prefix}_${tumor_prefix}_${rna_prefix}"
   cache false
+  publishDir "${lens_out_dir}"
 
   input:
   tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(rna_prefix), val(dataset), path(netmhcpan_input), path(mutant_fasta), path(pcvi), path(quants)
   path gtf
   val parstr
+  val lens_out_dir
 
   output:
   tuple val(pat_name), val(norm_prefix), val(tumor_prefix), val(rna_prefix), val(dataset), path("*metadata.txt"), emit: metadatas
 
   script:
   """
-  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py add-indel-metadata -n ${netmhcpan_input} -m ${mutant_fasta} -q ${quants} -g ${gtf} -c ${pcvi}  -o "${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix}_${rna_prefix}.indel.metadata.txt"
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py add-indel-metadata -b ${netmhcpan_input} -m ${mutant_fasta} -q ${quants} -g ${gtf} -c ${pcvi}  -o "${dataset}-${pat_name}-${norm_prefix}_${tumor_prefix}_${rna_prefix}.indel.metadata.txt"
   """
 }
 
@@ -142,10 +146,12 @@ process lenstools_add_herv_metadata {
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
   tag "${dataset}/${pat_name}/${prefix}"
   cache false
+  publishDir "${lens_out_dir}"
 
   input:
   tuple val(pat_name), val(prefix), val(dataset), path(netmhcpan), path(quants)
   val parstr
+  val lens_out_dir
 
   output:
   tuple val(pat_name), val(prefix), val(dataset), path('*.hervs.metadata.txt'), emit: herv_metadata
@@ -189,15 +195,16 @@ process lenstools_make_self_antigen_peptides {
   cache false
 
   input:
-  tuple val(pat_name), val(prefix), val(dataset), path(expressed_selfs), path(germline_vcf), path(somatic_vcf)
+  //Currently running without prefix...
+  tuple val(pat_name), val(dataset), path(expressed_selfs), path(germline_vcf), path(somatic_vcf)
   path pep_ref
 
   output:
-  tuple val(pat_name), val(prefix), val(dataset), path("*self.pep.fa"), emit: self_antigen_peptides
+  tuple val(pat_name), val(dataset), path("*self.pep.fa"), emit: self_antigen_peptides
 
   script:
   """
-  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py make-self-antigen-peptides --expressed-selfs ${expressed_selfs} -r ${pep_ref} --germline-vcf ${germline_vcf} --somatic-vcf ${somatic_vcf} -o ${dataset}-${pat_name}-${prefix}.self.pep.fa
+  python ${params.project_dir}/workflow/lenstools/bin/lenstools.py make-self-antigen-peptides --expressed-selfs ${expressed_selfs} -r ${pep_ref} --germline-vcf ${germline_vcf} --somatic-vcf ${somatic_vcf} -o ${dataset}-${pat_name}.self.pep.fa
   """
 }
 
@@ -208,10 +215,12 @@ process lenstools_add_self_antigen_metadata {
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
   tag "${dataset}/${pat_name}/${prefix}"
   cache false
+  publishDir "${lens_out_dir}"
 
   input:
   tuple val(pat_name), val(prefix), val(dataset), path(binding_affinities), path(quants)
   path gtf
+  val lens_out_dir
 
   output:
   tuple val(pat_name), val(prefix), val(dataset), path("*self_antigen.metadata.txt"), emit: self_antigen_metadata
@@ -273,11 +282,13 @@ process lenstools_add_viral_metadata {
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'
   tag "${dataset}/${pat_name}/${prefix}"
   cache false
+  publishDir "${lens_out_dir}"
 
   input:
   tuple val(pat_name), val(prefix), val(dataset), path(binding_affinities), path(viral_quants)
   path virus_cds_ref
   val parstr
+  val lens_out_dir
 
   output:
   tuple val(pat_name), val(prefix), val(dataset), path('*viral.metadata.txt'), emit: viral_metadata
@@ -336,10 +347,12 @@ process lenstools_add_fusion_metadata {
   conda 'bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam'       
   tag "${dataset}/${pat_name}/${prefix}"                                                            
   cache false                                                                                       
+  publishDir "${lens_out_dir}"
                                                                                                     
   input:                                                                                            
   tuple val(pat_name), val(prefix), val(dataset), path(binding_affinities), path(fusions)           
   val parstr                                                                                        
+  val lens_out_dir
                                                                                                     
   output:                                                                                           
   tuple val(pat_name), val(prefix), val(dataset), path("*fusion.metadata.txt"), emit: fusion_metadata
