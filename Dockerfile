@@ -9,3 +9,4 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY lenstools.py /opt/lenstools/lenstools.py
+COPY lenstools_w_final_report.py /opt/lenstools/lenstools_w_final_report.py
