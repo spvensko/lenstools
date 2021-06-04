@@ -7,3 +7,5 @@ RUN apt-get update \
     python3-pyvcf \
     python3-scipy \
   && rm -rf /var/lib/apt/lists/*
+
+COPY lenstools.py /opt/lenstools/lenstools.py
