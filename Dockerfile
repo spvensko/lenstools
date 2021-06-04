@@ -27,6 +27,6 @@ ENV HTSLIB_INCLUDE_DIR /usr/local/include
 ENV LD_LIBRARY_PATH /usr/local/lib
 
 RUN conda update conda
-RUN conda create -n run-env bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam
+RUN conda create -n run-env bioconda::pyvcf bioconda::biopython anaconda::numpy anaconda::scipy bioconda::pysam anaconda::pandas
 RUN echo "source activate run-env" > ~/.bashrc
 ENV PATH /opt/conda/envs/run-env/bin:$PATH
