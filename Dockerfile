@@ -6,6 +6,7 @@ RUN apt-get update \
     python3-biopython \
     python3-pyvcf \
     python3-scipy \
+    python3-pysam \
   && rm -rf /var/lib/apt/lists/*
 
 COPY lenstools.py /opt/lenstools/lenstools.py
