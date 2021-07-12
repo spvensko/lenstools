@@ -1204,7 +1204,7 @@ def make_indel_peptides(args):
 #            if check_mut_pep_in_nt_context(mut_peptide, nt_context):
             md5able_str = "{}".format(':'.join([str(record['meta'].CHROM), str(record['meta'].POS), str(record['transcript']), str(record['meta'].REF), str(record['meta'].ALT)])).encode('utf-8')
             var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
-            mutant_peptides["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:{} GENOMIC_CONTEXT:{} GENOMIC_CONTEXT_RANGE:{}_{}-{}".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['transcript'], record['meta'].REF, record['meta'].ALT, 'frameshift_deletion', 'N/A', nt_context, record['meta'].CHROM, genomic_context_lower_pos, genomic_context_upper_pos)] = mut_peptide
+            mutant_peptides["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:{} GENOMIC_CONTEXT:{} GENOMIC_CONTEXT_RANGE:{}_{}-{}".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['transcript'], record['meta'].REF, record['meta'].ALT, 'frameshift_deletion', 'NA', nt_context, record['meta'].CHROM, genomic_context_lower_pos, genomic_context_upper_pos)] = mut_peptide
 
         # INSERTIONS #
         if re.search("ins", record['nt_change']):
@@ -1254,7 +1254,7 @@ def make_indel_peptides(args):
 #            if check_mut_pep_in_nt_context(mut_peptide, nt_context):
             md5able_str = "{}".format(':'.join([str(record['meta'].CHROM), str(record['meta'].POS), str(record['transcript']), str(record['meta'].REF), str(record['meta'].ALT)])).encode('utf-8')
             var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
-            mutant_peptides["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:{} GENOMIC_CONTEXT:{} GENOMIC_CONTEXT_RANGE:{}_{}-{}".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['transcript'], record['meta'].REF, record['meta'].ALT, 'frameshift_insertion', 'N/A', nt_context, record['meta'].CHROM, genomic_context_lower_pos, genomic_context_upper_pos)] = mut_peptide
+            mutant_peptides["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:{} GENOMIC_CONTEXT:{} GENOMIC_CONTEXT_RANGE:{}_{}-{}".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['transcript'], record['meta'].REF, record['meta'].ALT, 'frameshift_insertion', 'NA', nt_context, record['meta'].CHROM, genomic_context_lower_pos, genomic_context_upper_pos)] = mut_peptide
 
         # DUPLICATIONS #
         if re.search("dup", record['nt_change']):
@@ -1306,7 +1306,7 @@ def make_indel_peptides(args):
 #            if check_mut_pep_in_nt_context(mut_peptide, nt_context):
             md5able_str = "{}".format(':'.join([str(record['meta'].CHROM), str(record['meta'].POS), str(record['transcript']), str(record['meta'].REF), str(record['meta'].ALT)])).encode('utf-8')
             var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
-            mutant_peptides["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:{} GENOMIC_CONTEXT:{} GENOMIC_CONTEXT_RANGE:{}_{}-{}".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['transcript'], record['meta'].REF, record['meta'].ALT, 'frameshift_duplication', 'N/A', nt_context, record['meta'].CHROM, genomic_context_lower_pos, genomic_context_upper_pos)] = mut_peptide
+            mutant_peptides["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:{} GENOMIC_CONTEXT:{} GENOMIC_CONTEXT_RANGE:{}_{}-{}".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['transcript'], record['meta'].REF, record['meta'].ALT, 'frameshift_duplication', 'NA', nt_context, record['meta'].CHROM, genomic_context_lower_pos, genomic_context_upper_pos)] = mut_peptide
 
     with open(args.output, 'w') as ofo:
         for k, v in mutant_peptides.items():
@@ -2690,20 +2690,20 @@ def make_lens_report(args):
     reports = glob(os.path.join(args.metadata_dir, "*metadata.txt"))
     print(reports)
 
-    antigen_sources = ['splice', 'indel', 'viral', 'hervs', 'snv', 'fusion', 'self_antigen']
+    antigen_sources = ['hervs', 'indel', 'viral', 'splice', 'snv', 'fusion', 'self_antigen']
 
     #Initiating dataframe with snvs...
 
-    splice_metadata = [i for i in reports if re.search('splice.metadata', i)][0]
+    hervs_metadata = [i for i in reports if re.search('hervs.metadata', i)][0]
   
-    report_df = pd.read_csv(splice_metadata, sep='\t')
+    report_df = pd.read_csv(hervs_metadata, sep='\t')
 
     # Skipping SNV since it was used to initiate DF.
     for antigen_source in antigen_sources[1:]:
-        print(antigen_source)
-        report = [i for i in reports if re.search('{}.metadata'.format(antigen_source), i)][0]
-        print(report)
         try:
+            print(antigen_source)
+            report = [i for i in reports if re.search('{}.metadata'.format(antigen_source), i)][0]
+            print(report)
             tmp_report = pd.read_csv(report, sep='\t')
             if not(tmp_report.empty):
                 report_df = pd.concat([report_df, tmp_report])
@@ -2720,8 +2720,10 @@ def make_lens_report(args):
     #else:
     #    sorted_df = sorted_df[['MHC', 'Peptide', 'Icore', 'Aff(nM)', 'Score_BA', '%Rank_BA', 'Score_EL', '%Rank_EL', 'Pos', 'AntigenSource', 'VariantType', 'CCF', 'Agretopocity', 'Reference_Aff(nM)', 'Reference_Peptide', 'ReferenceAllele', 'AlternateAllele', 'Chromosome', 'VariantPosition', 'Strand', 'GeneName', 'MinimumExpression', 'TPM', 'ReadCount', 'PercentRnaReadsWithVariant', 'TotalRnaReadCoverage', 'TranscriptIdentifier', 'VirusIdentifier', 'BindingProperty', 'NucleotideContext', 'ProteinContext', 'Identity']]
 
-    #sorted_df.to_csv(args.output, sep='\t', index=False, na_rep='N/A')
-    report_df.to_csv(args.output, sep='\t', index=False, na_rep='N/A')
+    #sorted_df.to_csv(args.output, sep='\t', index=False, na_rep='NA')
+
+    filtered_df = report_df[report_df["Aff(nM)"] < 50]
+    filtered_df.to_csv(args.output, sep='\t', index=False, na_rep='NA')
 
 
 
