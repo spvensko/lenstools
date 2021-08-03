@@ -2687,16 +2687,16 @@ def add_rna_norms(args):
 def make_lens_report(args):
     """
     """
-    reports = glob(os.path.join(args.metadata_dir, "*metadata.txt"))
+    reports = glob(os.path.join(args.metadata_dir, "*metadata*"))
     print(reports)
 
-    antigen_sources = ['hervs', 'indel', 'viral', 'splice', 'snv', 'fusion', 'self_antigen']
+    antigen_sources = ['viral', 'indel', 'hervs', 'splice', 'snv', 'fusion', 'self_antigen']
 
     #Initiating dataframe with snvs...
 
-    hervs_metadata = [i for i in reports if re.search('hervs.metadata', i)][0]
+    viral_metadata = [i for i in reports if re.search('viral.metadata', i)][0]
   
-    report_df = pd.read_csv(hervs_metadata, sep='\t')
+    report_df = pd.read_csv(viral_metadata, sep='\t')
 
     # Skipping SNV since it was used to initiate DF.
     for antigen_source in antigen_sources[1:]:
@@ -2722,7 +2722,7 @@ def make_lens_report(args):
 
     #sorted_df.to_csv(args.output, sep='\t', index=False, na_rep='NA')
 
-    filtered_df = report_df[report_df["Aff(nM)"] < 50]
+    filtered_df = report_df[report_df["Aff(nM)"] <= 500]
     filtered_df.to_csv(args.output, sep='\t', index=False, na_rep='NA')
 
 

@@ -12,6 +12,7 @@ import numpy as np
 from scipy import stats
 import csv
 import pysam
+import scipy
 import hashlib
 import os
 
@@ -90,6 +91,12 @@ def get_args():
                                            required=True)
     parser_make_herv_peptides.add_argument('-r', '--herv-ref',
                                            help="hERV reference FASTA.",
+                                           required=True)
+    parser_make_herv_peptides.add_argument('-b', '--tumor-bam',
+                                           help="Tumor RNA BAM.",
+                                           required=True)
+    parser_make_herv_peptides.add_argument('-i', '--tumor-bai',
+                                           help="Tumor RNA BAI.",
                                            required=True)
     parser_make_herv_peptides.add_argument('-o', '--output',
                                            help="Output file.",
@@ -184,8 +191,8 @@ def get_args():
     # Subparser for adding hERV metadata
     parser_add_herv_metadata = subparsers.add_parser('add-herv-metadata',
                                                      help="Add hERV peptide metadata.")
-    parser_add_herv_metadata.add_argument('-q', '--quants',
-                                          help="Transcript abundance file (Salmon format).",
+    parser_add_herv_metadata.add_argument('-p', '--peptides',
+                                          help="Annotated peptide file.",
                                           required=True)
     parser_add_herv_metadata.add_argument('-b', '--binding-affinities',
                                           help="Binding affinities file (netMHCpan format).",
@@ -2150,53 +2157,104 @@ def make_herv_peptides(args):
     """
     """
     expressed_hervs = []
-    expressed_hervs_seqs = {}
+    expressed_hervs_metadata = {}
     expressed_hervs_aas = {}
+
+    expressed_herv_col_map = {}
+
     with open(args.expressed_hervs) as fo:
-        for line in fo.readlines():
-            line = line.rstrip()
-            expressed_hervs.append(line)
+        for line_idx, line in enumerate(fo.readlines()):
+            line = line.rstrip().split(',')
+            if line_idx == 0: 
+                for idx, i in enumerate(line): 
+                    expressed_herv_col_map[i] = idx
+                print(expressed_herv_col_map)
+            else:
+                herv_id = line[expressed_herv_col_map['Name']]
+                expressed_hervs.append(herv_id)
+                expressed_hervs_metadata[herv_id] = {}
+                expressed_hervs_metadata[herv_id]['tumor_cpm'] = line[expressed_herv_col_map['Tumor_CPM']]
+                expressed_hervs_metadata[herv_id]['norm_cpm'] = line[expressed_herv_col_map['Norm_CPM']]
+                expressed_hervs_metadata[herv_id]['delta'] = line[expressed_herv_col_map['log2(Tumor_CPM+1)-log2(Norm_CPM+1)']]
+                expressed_hervs_metadata[herv_id]['tpm'] = line[expressed_herv_col_map['TPM']]
+                expressed_hervs_metadata[herv_id]['numreads'] = line[expressed_herv_col_map['NumReads']]
+
+    expressed_hervs_seqs = {}
+
 
     for seq_record in SeqIO.parse(args.herv_ref, "fasta"):
-        if seq_record.description in expressed_hervs:
+        if seq_record.description in expressed_hervs: 
             expressed_hervs_seqs[seq_record.description] = seq_record.seq
-            expressed_hervs_seqs["{}_rc".format(seq_record.description)] = seq_record.seq.reverse_complement()
 
-    for i in [0, 1, 2]:
-        for id, seq in expressed_hervs_seqs.items():
-            #Defaulting to False here. May change to True.
-            aa_seq = seq[i:].translate(to_stop=False)
-            expressed_hervs_aas["{}_{}".format(id, i)] = aa_seq
+    alns = pysam.AlignmentFile(args.tumor_bam, 'rb')
 
+#    for herv in expressed_hervs_metadata.keys():
+#        print(herv)
+#        herv_chr = herv.split('.')[1] 
+#        herv_start = int(herv.split('.')[2])
+#        herv_stop = int(herv.split('.')[3])
+#        print("{}\t{}\t{}".format(herv_chr, herv_start, herv_stop))
+#        herv_seq = expressed_hervs_seqs[herv]
+#        for pos_idx, pos in enumerate(alns.pileup(herv_chr, herv_start-1, herv_stop)):
+#        for pos_idx, pos in enumerate(pileup_truncated(alns, herv_chr, herv_start-1, herv_stop)):
+#            query_seqs = [x.lower() for x in pos.get_query_sequences()]
+#            counts= {x:query_seqs.count(x) for x in query_seqs}
+#            print("{}\t{}\t{}".format(pos.reference_pos, herv_seq[pos_idx], counts))
+#            most_freq_finder = lambda x: scipy.stats.mode(x)[0][0]
+#            most_freq_base = most_freq_finder(query_seqs)
+#            most_freq_base_freq = query_seqs.count(most_freq_base)/len(query_seqs)
+#            if most_freq_base_freq < 0.80:
+#            if herv_seq[pos_idx] != most_freq_base:
+#                print("WARNING: Possible germline mutation!")
+#            print("{}\t{}\t{}\t{}".format(pos.reference_pos, herv_seq[pos_idx], most_freq_base, query_seqs.count(most_freq_base)/len(query_seqs)))
+        
+
+    for id, seq in expressed_hervs_seqs.items():
+        aa_seq = seq.translate()
+        expressed_hervs_aas["{}".format(id)] = aa_seq
 
     with open(args.output, 'w') as ofo:
         for k, v in expressed_hervs_aas.items():
-            if len(v) > 8:
-                ofo.write(">{}\n{}\n".format(k, v))
+            header = "MD5:{} NAME:{} TUMOR_CPM:{} NORM_CPM:{} DELTA:{} TPM:{} NUMREADS:{}".format(hashlib.md5(str(k).encode('utf-8')).hexdigest()[:16], k, expressed_hervs_metadata[k]['tumor_cpm'], expressed_hervs_metadata[k]['norm_cpm'], expressed_hervs_metadata[k]['delta'], expressed_hervs_metadata[k]['tpm'], expressed_hervs_metadata[k]['numreads'])
+            ofo.write(">{}\n{}\n".format(header, v))
 
 
 def add_herv_metadata(args):
     """
     """
+    checksum_to_meta_map = {}
+    with open(args.peptides) as fo:
+        for line in fo.readlines():
+            print(line)
+            if line.startswith('>'):
+                line = line.rstrip()
+                bufr_dict = {i.split(':')[0]: i.split(':')[1] for i in line.split(' ')[1:]}
+                line = line.split(' ')
+                print(line)
+                checksum = "MD5_{}".format(line[0].lstrip('>').split(':')[1][:-5])
+                print(checksum)
+                checksum_to_meta_map[checksum] = bufr_dict
+
+
     header = ''
     #tx_abundances = load_tx_abundances(args)
 
     #print(tx_abundances)
 
     tx_to_tpm = {}
-    with open(args.quants) as qfo:
-        tpm_col_idx = ''
-        tx_col_idx = ''
-        for line_idx, line in enumerate(qfo.readlines()):
-            if line_idx == 0:
-                print(line)
-                tpm_col_idx = line.split('\t').index('TPM')
-                tx_col_idx = line.split('\t').index('Name')
-            else:
-                line = line.split('\t')
-                tx_to_tpm[line[tx_col_idx].split('.')[0][:15].replace(':','_')] = line[tpm_col_idx]
-
-    herv_expression = {}
+#    with open(args.expressed_hervs) as qfo:
+#        tpm_col_idx = ''
+#        tx_col_idx = ''
+#        for line_idx, line in enumerate(qfo.readlines()):
+#            if line_idx == 0:
+#                print(line)
+#                tpm_col_idx = line.split('\t').index('TPM')
+#                tx_col_idx = line.split('\t').index('Name')
+#            else:
+#                line = line.split('\t')
+#                tx_to_tpm[line[tx_col_idx].split('.')[0][:15].replace(':','_')] = line[tpm_col_idx]
+#
+#    herv_expression = {}
 
     output_lines = []
 
@@ -2210,6 +2268,10 @@ def add_herv_metadata(args):
                     header.remove('BindLevel')
                 except:
                     pass
+                header.extend(['gEVE_ORF'])
+                header.extend(['Tumor_CPM'])
+                header.extend(['Norm_CPM'])
+                header.extend(['log2(Tumor_CPM+1)-log2(Norm_CPM+1)'])
                 header.extend(['TPM'])
                 header.insert(0, 'AntigenSource')
                 header = header[:4] + header[9:]
@@ -2222,7 +2284,15 @@ def add_herv_metadata(args):
                 if 'WB' in line:
                     line.remove('<=')
                     line.remove('WB')
-                tpm = tx_to_tpm[line[10]]
+                tumor_cpm = checksum_to_meta_map[line[10]]['TUMOR_CPM']
+                norm_cpm = checksum_to_meta_map[line[10]]['NORM_CPM']
+                delta = checksum_to_meta_map[line[10]]['DELTA']
+                tpm = checksum_to_meta_map[line[10]]['TPM']
+                name = checksum_to_meta_map[line[10]]['NAME']
+                line.extend([name])
+                line.extend([tumor_cpm])
+                line.extend([norm_cpm])
+                line.extend([delta])
                 line.extend([tpm])
                 line = line[:4] + line[9:]
                 line.insert(0, 'ERV')
