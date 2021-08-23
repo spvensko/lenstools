@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!vusr/bin/env python
 
 import argparse
 import vcf
@@ -101,6 +101,9 @@ def get_args():
     parser_make_herv_peptides.add_argument('-o', '--output',
                                            help="Output file.",
                                            required=True)
+    parser_make_herv_peptides.add_argument('-n', '--nt-output',
+                                           help="Nucleotide output file.",
+                                           required=True)
 
 
     # Subparser for making viral peptides
@@ -111,6 +114,12 @@ def get_args():
                                             required=True)
     parser_make_viral_peptides.add_argument('-f', '--fasta',
                                             help="Viral CDS reference FASTA.",
+                                            required=True)
+    parser_make_viral_peptides.add_argument('-v', '--viral-bam',
+                                            help="VirDetect BAM.",
+                                            required=True)
+    parser_make_viral_peptides.add_argument('-g', '--viral-gff',
+                                            help="VirDetect GFF.",
                                             required=True)
     parser_make_viral_peptides.add_argument('-o', '--output',
                                             help='Output file.',
@@ -197,6 +206,18 @@ def get_args():
     parser_add_herv_metadata.add_argument('-b', '--binding-affinities',
                                           help="Binding affinities file (netMHCpan format).",
                                           required=True)
+    parser_add_herv_metadata.add_argument('-q', '--quants',
+                                           help="tumor quant.sf.",
+                                           required=True)
+    parser_add_herv_metadata.add_argument('-g', '--geve-data',
+                                           help="gEVE metadata",
+                                           required=True)
+    parser_add_herv_metadata.add_argument('-n', '--geve-nt',
+                                           help="gEVE nt sequences",
+                                           required=True)
+    parser_add_herv_metadata.add_argument('-a', '--geve-aa',
+                                           help="gEVE aa sequences",
+                                           required=True)
     parser_add_herv_metadata.add_argument('-o', '--output',
                                           help="Output file.",
                                           required=True)
@@ -212,6 +233,9 @@ def get_args():
                                            required=True)
     parser_add_viral_metadata.add_argument('-r', '--viral-cds-ref',
                                            help="Viral CDS reference FASTA (used for VirDetect).",
+                                           required=True)
+    parser_add_viral_metadata.add_argument('-p', '--viral-pep-ref',
+                                           help="Viral peptide reference FASTA (used for VirDetect).",
                                            required=True)
     parser_add_viral_metadata.add_argument('-o', '--output',
                                            help="Output file.",
@@ -230,6 +254,9 @@ def get_args():
     parser_add_self_metadata.add_argument('-g', '--gtf',
                                           help="GTF file",
                                           required=True)
+    parser_add_self_metadata.add_argument('-l', '--gene-list',
+                                          help="CTA/self-antigen gene list file",
+                                          required=True)
     parser_add_self_metadata.add_argument('-o', '--output',
                                           help="Output file.",
                                           required=True)
@@ -242,6 +269,9 @@ def get_args():
                                             required=True)
     parser_add_fusion_metadata.add_argument('-f', '--fusions',
                                             help="Predicted fusions (STARFusion format).",
+                                            required=True)
+    parser_add_fusion_metadata.add_argument('-a', '--fasta',
+                                            help="FASTA file with potential peptides.",
                                             required=True)
     parser_add_fusion_metadata.add_argument('-o', '--output',
                                             help="Output file.",
@@ -332,6 +362,16 @@ def get_args():
     parser_expressed_hervs.add_argument('-t', '--abundance-threshold',
                                         help="Expression threshold for filtering. (default: 10)")
     parser_expressed_hervs.add_argument('-o', '--output',
+                                        help="Output file.",
+                                        required=True)
+    
+    # Subparser for filtering expressed hERVs
+    parser_expressed_hervs_bed = subparsers.add_parser('get-expressed-hervs-bed',
+                                                   help="Filter expressed hERVs.")
+    parser_expressed_hervs_bed.add_argument('-e', '--expressed-hervs',
+                                        help="Transcript abundance file (Salmon format).",
+                                        required=True)
+    parser_expressed_hervs_bed.add_argument('-o', '--output',
                                         help="Output file.",
                                         required=True)
 
@@ -1278,8 +1318,8 @@ def make_indel_peptides(args):
 
             ref_peptide = ref_aa[max(start_pos_aa-7, 0):]
             mut_peptide = mut_aa[max(start_pos_aa-7, 0):]
-            nt_context = ''.join(mut_nt[start_pos_nt-10:stop_pos_nt+10])
-#            nt_context = ''.join(mut_nt[max(start_pos_nt-24, 0):])
+#            nt_context = ''.join(mut_nt[start_pos_nt-10:stop_pos_nt+10])
+            nt_context = ''.join(mut_nt[max(start_pos_nt-24, 0):])
 
             print("Mutant genomic context:    {}".format(nt_context))
             print("Reference peptide: {}".format(ref_peptide))
@@ -1292,7 +1332,7 @@ def make_indel_peptides(args):
 #            if check_mut_pep_in_nt_context(mut_peptide, mut_nt):
             md5able_str = "{}".format(':'.join([str(record['meta'].CHROM), str(record['meta'].POS), str(record['transcript']), str(record['meta'].REF), str(record['meta'].ALT)])).encode('utf-8')
             var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
-            mutant_peptides["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:{} GENOMIC_CONTEXT:{} GENOMIC_CONTEXT_RANGE:{}_{}-{}".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['transcript'], record['meta'].REF, record['meta'].ALT, 'frameshift_deletion', 'NA', nt_context, record['meta'].CHROM, genomic_context_lower_pos, genomic_context_upper_pos)] = mut_peptide
+            mutant_peptides["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:{} GENOMIC_CONTEXT:{} GENOMIC_CONTEXT_RANGE:{}_{}-{}".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['transcript'], record['meta'].REF, record['meta'].ALT, 'frameshift_deletion', 'NA', 'NA', record['meta'].CHROM, genomic_context_lower_pos, genomic_context_upper_pos)] = mut_peptide
 
         # INSERTIONS #
         if re.search("ins", record['nt_change']):
@@ -1505,7 +1545,7 @@ def check_rna_coverage(args):
 
 
 
-def pileup_truncated(bam,contig, start, stop):
+def pileup_truncated(bam,contig, start=None, stop=None):
     """
     Taken from: https://github.com/pysam-developers/pysam/issues/851#issuecomment-585990105
     Obtain Pysam columns only at selected region
@@ -1721,7 +1761,7 @@ def calculate_agretopicity(args):
             line = [x for x in line if x]
             if len(line) > 14 and line[0] == 'Pos':
                 #Note: This is REFERENCE, _NOT_ GERMLINE!
-                line.extend(['Reference_Aff(nM)', 'Reference_Peptide', 'Agretopocity'])
+                line.extend(['reference_binding_affinity', 'reference_peptide', 'agretopicity'])
                 header = ','.join(line)
             elif len(line) > 14 and line[0] not in ['Pos', 'Protein']:
                 # Hardcoding a 1000 nM ceiling for speed purposes.
@@ -1777,7 +1817,7 @@ def add_snv_metadata(args):
     for k,v in tx_to_tpm.items():
         tx_to_log2tpm[k] = np.log2(v + 1)
 
-    uq = np.percentile(tx_to_log2tpm.values(), 75)
+    uq = np.percentile(list(tx_to_log2tpm.values()), 75)
 
     for k,v in tx_to_log2tpm.items():
         tx_to_uqlog2tpm[k] = v/uq
@@ -1786,7 +1826,7 @@ def add_snv_metadata(args):
     with open(args.gtf) as fo:
         for line in fo.readlines():
             line = line.split('\t')
-            if len(line) > 3 and line[2] == 'transcript':
+            if len(line) > 3 and line[2] == 'transcript' and line[1] != 'geve':
                 gene_name = str(line).split('gene_name "')[1].split('"')[0]
                 tx_id = str(line).split('transcript_id "')[1].split('"')[0]
                 tx_id_no_version = str(line).split('transcript_id "')[1].split('"')[0].split('.')[0]
@@ -1815,9 +1855,22 @@ def add_snv_metadata(args):
                     header.remove('BindLevel')
                 except:
                     pass
-                header.insert(0, 'AntigenSource')
-                header.extend(['GeneName', 'TranscriptIdentifier', 'VariantPosition', 'ReferenceAllele', 'AlternateAllele', 'TPM', 'log2(TPM+1)', 'UQ(log2(TPM+1))', 'CCF', 'ProteinContext', 'NucleotideContext', 'VariantType', 'TotalRnaReadCoverage', 'PercentRnaReadsWithVariant'])
-                header = header[:4] + header[9:]
+                header.insert(0, 'antigen_source')
+                header.extend(['gene_name', 'transcript_identifier', 'variant_postiion', 'reference_allele', 'alternate_allele', 'tpm', 'log2(tpm+1)', 'uq(log2(tpm+1))', 'cancer_cell_fraction', 'protein_context', 'nucleotide_context', 'variant_type', 'rna_read_count', 'percent_variant_rna_reads'])
+                header = header[:5] + header[11:]
+                header[1] = 'pos'                                                                   
+                header[2] = 'mhc_allele'                                                            
+                header[3] = 'peptide'                                                               
+                header[4] = 'peptide_core'                                                          
+                header[5] = 'internal_identifier'                                                   
+                header[6] = 'score_el'                                                              
+                header[7] = 'percent_rank_el'                                                       
+                header[8] = 'score_ba'                                                              
+                header[9] = 'percent_rank_ba'                                                       
+                header[10] = 'binding_affinity'  
+                header[11] = 'reference_binding_affinity'  
+                header[12] = 'reference_peptide'  
+                header[13] = 'agretopicity'  
             elif len(line) < 16:
                 continue
             else:
@@ -1826,6 +1879,7 @@ def add_snv_metadata(args):
                     continue
                 tx_id = checksum_to_meta_map[csum]['TRANSCRIPT']
                 if float(line[15]) < 1000 and tx_id.split('.')[0] in tx_to_gene.keys() and tx_id.split('.')[0] in tx_to_tpm.keys() and line[10] in checksum_to_meta_map.keys():
+                    line.insert(0, 'SNV')
                     gene_name = tx_to_gene[tx_id.split('.')[0]]
                     var_pos = checksum_to_meta_map[csum]['VARIANT_POS'].replace('_', ':')
                     ref = checksum_to_meta_map[csum]['REF']
@@ -1849,9 +1903,8 @@ def add_snv_metadata(args):
                     if 'WB' in line:
                        line.remove('<=')
                        line.remove('WB')
-                    line.insert(0, 'SNV')
                     line.extend([gene_name, tx_id, var_pos, ref, alt, str(tpm), str(log2tpm), str(uqlog2tpm), ccf, aa_context, nt_context, var_type, rna_coverage, proportion_rna_var])
-                    line = line[:4] + line[9:]
+                    line = line[:5] + line[11:]
                     new_lines.append(line)
 
     with open(args.output, 'w') as ofo:
@@ -1890,7 +1943,7 @@ def add_indel_metadata(args):
     for k,v in tx_to_tpm.items():
         tx_to_log2tpm[k] = np.log2(v + 1)
 
-    uq = np.percentile(tx_to_log2tpm.values(), 75)
+    uq = np.percentile(list(tx_to_log2tpm.values()), 75)
 
     for k,v in tx_to_log2tpm.items():
         tx_to_uqlog2tpm[k] = v/uq
@@ -1899,7 +1952,7 @@ def add_indel_metadata(args):
     with open(args.gtf) as gtfo:
         for line in gtfo.readlines():
             line = line.split('\t')
-            if len(line) > 3 and line[2] == 'transcript':
+            if len(line) > 3 and line[2] == 'transcript' and line[1] != 'geve':
                 gene_name = str(line).split('gene_name "')[1].split('"')[0]
                 tx_id = str(line).split('transcript_id "')[1].split('"')[0]
                 tx_id_no_version = str(line).split('transcript_id "')[1].split('"')[0].split('.')[0]
@@ -1927,10 +1980,20 @@ def add_indel_metadata(args):
                 continue
             if line[0] == 'Pos':
                 header = line
+                header.insert(0, 'antigen_source')
                 header.remove('BindLevel')
-                header.extend(['GeneName', 'TranscriptIdentifier', 'VariantPosition', 'ReferenceAllele', 'AlternateAllele', 'TPM', 'log2(TPM+1)', 'UQ(log2(TPM+1))', 'CCF', 'ProteinContext', 'NucleotideContext', 'VariantType', 'TotalRnaReadCoverage', 'PercentRnaReadsWithVariant'])
-                header = header[:4] + header[9:]
-                header.insert(0, 'AntigenSource')
+                header.extend(['gene_name', 'transcript_identifier', 'variant_position', 'reference_allele', 'alternate_allele', 'tpm', 'log2(tpm+1)', 'uq(log2(tpm+1))', 'cancer_cell_fraction', 'protein_context', 'nucleotide_context', 'variant_type', 'rna_read_count', 'percent_variant_rna_reads'])
+                header = header[:5] + header[11:]
+                header[1] = 'pos'                                                                   
+                header[2] = 'mhc_allele'                                                            
+                header[3] = 'peptide'                                                               
+                header[4] = 'peptide_core'                                                          
+                header[5] = 'internal_identifier'                                                   
+                header[6] = 'score_el'                                                              
+                header[7] = 'percent_rank_el'                                                       
+                header[8] = 'score_ba'                                                              
+                header[9] = 'percent_rank_ba'                                                       
+                header[10] = 'binding_affinity'  
             elif len(line) < 16:
                 continue
             if line[10] not in checksum_to_meta_map.keys():
@@ -1939,6 +2002,8 @@ def add_indel_metadata(args):
             tx_id = checksum_to_meta_map[csum]['TRANSCRIPT']
             if tx_id.split('.')[0] in tx_to_gene.keys() and tx_id.split('.')[0] in tx_to_tpm.keys() and float(line[15]) < 1000:
             #if tx_id.split(',')[0] in tx_to_gene.keys() and tx_id.split('.')[0] in tx_to_tpm.keys():
+                line.insert(0, 'InDel')
+                line = line[:5] + line[11:]
                 gene_name = tx_to_gene[tx_id.split('.')[0]]
                 var_pos = checksum_to_meta_map[csum]['VARIANT_POS'].replace('_', ':')
                 ref = checksum_to_meta_map[csum]['REF']
@@ -1963,8 +2028,6 @@ def add_indel_metadata(args):
                     line.remove('<=')
                     line.remove('WB')
                 line.extend([gene_name, tx_id, var_pos, ref, alt, str(tpm), str(log2tpm), str(uqlog2tpm), ccf, aa_context, nt_context, var_type, rna_coverage, rna_proportion_vars])
-                line.insert(0, 'InDel')
-                line = line[:4] + line[9:]
                 new_lines.append(line)
 
 
@@ -2092,6 +2155,38 @@ def expressed_hervs(args):
             ofo.write("{}\n".format(herv))
 
 
+def get_expressed_hervs_bed(args):
+    """
+    """
+    with open(args.expressed_hervs) as fo:
+        with open(args.output, 'w') as ofo:
+            for line_idx, line in enumerate(fo.readlines()):
+                if line_idx != 0:
+                    herv = line.split(',')[0]
+                    chr = herv.split('.')[1] 
+                    first = herv.split('.')[2] 
+                    second = herv.split('.')[3] 
+                    ofo.write("{}\t{}\t{}\n".format(chr, first, second))
+#    tx_abundances = load_tx_abundances(args)
+#    if not(args.abundance_threshold):
+#        print("No abundance threshold!")
+#        tx_threshold = np.mean(tx_abundances) + (5*np.std(tx_abundances))
+#        print("Transcript threshold (mean + 5*std): {}".format(tx_threshold))
+#    else:
+#        print("Abundance threshold: {}".format(args.abundance_threshold))
+#        tx_threshold = float(args.abundance_threshold)
+#    expressed_hervs = get_expressed_txs(args, tx_threshold)
+#    print("tx_thresshold: {}".format(tx_threshold))
+#    print("# of expressed transcripts: {}".format(len(expressed_hervs)))
+#    print("Some expressed transcripts: {}".format(expressed_hervs[:10]))
+#        tx_threshold = get_tx_threshold(args, tx_abundances)
+
+#    with open(args.output, 'w') as ofo:
+#        for herv in expressed_hervs:
+#            ofo.write("{}\n".format(herv))
+
+
+
 def consolidate_multiqc_stats(args):
     """
     """
@@ -2188,40 +2283,119 @@ def make_herv_peptides(args):
 
     alns = pysam.AlignmentFile(args.tumor_bam, 'rb')
 
-#    for herv in expressed_hervs_metadata.keys():
-#        print(herv)
-#        herv_chr = herv.split('.')[1] 
-#        herv_start = int(herv.split('.')[2])
-#        herv_stop = int(herv.split('.')[3])
-#        print("{}\t{}\t{}".format(herv_chr, herv_start, herv_stop))
-#        herv_seq = expressed_hervs_seqs[herv]
-#        for pos_idx, pos in enumerate(alns.pileup(herv_chr, herv_start-1, herv_stop)):
-#        for pos_idx, pos in enumerate(pileup_truncated(alns, herv_chr, herv_start-1, herv_stop)):
-#            query_seqs = [x.lower() for x in pos.get_query_sequences()]
-#            counts= {x:query_seqs.count(x) for x in query_seqs}
-#            print("{}\t{}\t{}".format(pos.reference_pos, herv_seq[pos_idx], counts))
-#            most_freq_finder = lambda x: scipy.stats.mode(x)[0][0]
-#            most_freq_base = most_freq_finder(query_seqs)
-#            most_freq_base_freq = query_seqs.count(most_freq_base)/len(query_seqs)
-#            if most_freq_base_freq < 0.80:
-#            if herv_seq[pos_idx] != most_freq_base:
-#                print("WARNING: Possible germline mutation!")
-#            print("{}\t{}\t{}\t{}".format(pos.reference_pos, herv_seq[pos_idx], most_freq_base, query_seqs.count(most_freq_base)/len(query_seqs)))
+    #This is a bit crude right now. It _only_ considers the major allele at
+    #each position for the nucleotide sequence. I will include something in the
+    #header to list potentially heterozygous sites. This can be translated within
+    #the herv_metadata function.
+
+    orf_rna_coverage = {}
+    orf_het_sites = {}
+    orf_patient_seq = {}
+
+
+    for herv in expressed_hervs_metadata.keys():
+        orf_patient_seq[herv] = []
+        orf_het_sites[herv] = []
+         
+        print(herv)
+        print(expressed_hervs_metadata[herv])
+        herv_chr = herv.split('.')[1] 
+        herv_start = int(herv.split('.')[2])
+        herv_stop = int(herv.split('.')[3])
+        print("{}\t{}\t{}".format(herv_chr, herv_start, herv_stop))
+        herv_seq = expressed_hervs_seqs[herv]
+        if herv[-1] == '+':
+            tmp_info = pileup_truncated(alns, herv_chr, herv_start-1, herv_stop)
+            pileup_info = [(x.reference_pos, [i for i in x.get_query_sequences() if i]) for x in tmp_info]
+        elif herv[-1] == '-':
+            tmp_info = pileup_truncated(alns, herv_chr, herv_start-1, herv_stop)
+            pileup_info = reversed([(x.reference_pos, [complement(i) for i in x.get_query_sequences() if i]) for x in tmp_info])
+            
+        else:
+            sys.exit("Cannot determine ERV orientation.")
+
+        covered_pos = [] 
+        for pos_idx, pos in enumerate(pileup_info):
+            
+            query_seqs = [x.lower() for x in pos[1]]
+            if not query_seqs:
+                orf_patient_seq[herv].append(herv_seq[pos_idx])
+            if query_seqs:
+                covered_pos.append(pos[0])
+                counts= {x:query_seqs.count(x) for x in query_seqs}
+                most_freq_finder = lambda x: scipy.stats.mode(x)[0][0]
+                most_freq_base = most_freq_finder(query_seqs)
+                orf_patient_seq[herv].append(most_freq_base)
+                mismatch = ''
+                if herv_seq[pos_idx] != most_freq_base:
+                    mismatch = "Mismatch"
+                print("{}\t{}\t{}\t{}".format(pos[0], herv_seq[pos_idx], most_freq_base, mismatch))
+                most_freq_base_freq = float(query_seqs.count(most_freq_base))/len(query_seqs)
+                if float(most_freq_base_freq) < 0.80:
+                    orf_het_sites[herv].append(pos[0])
+                    print("WARNING: Possible germline mutation!")
+                    print("{}\t{}\t{}\t{}\t{}".format(pos[0], herv_seq[pos_idx], most_freq_base, query_seqs.count(most_freq_base)/len(query_seqs), counts))
+
+
+        orf_rna_coverage[herv] = "{},{}".format(covered_pos[0]+1, covered_pos[-1]+1)
+        print(herv_seq)
+        print(''.join(orf_patient_seq[herv]))
+        print(orf_het_sites[herv])
+        print(orf_rna_coverage[herv])
         
 
     for id, seq in expressed_hervs_seqs.items():
-        aa_seq = seq.translate()
+        aa_seq = Seq(''.join(orf_patient_seq[id])).translate(to_stop=True)
         expressed_hervs_aas["{}".format(id)] = aa_seq
 
     with open(args.output, 'w') as ofo:
         for k, v in expressed_hervs_aas.items():
-            header = "MD5:{} NAME:{} TUMOR_CPM:{} NORM_CPM:{} DELTA:{} TPM:{} NUMREADS:{}".format(hashlib.md5(str(k).encode('utf-8')).hexdigest()[:16], k, expressed_hervs_metadata[k]['tumor_cpm'], expressed_hervs_metadata[k]['norm_cpm'], expressed_hervs_metadata[k]['delta'], expressed_hervs_metadata[k]['tpm'], expressed_hervs_metadata[k]['numreads'])
+            header = "MD5:{} NAME:{} TUMOR_CPM:{} NORM_CPM:{} DELTA:{} TPM:{} NUMREADS:{} RNA_COVERAGE_RANGE:{} POTENTIAL_GERMLINE_HETS:{}".format(hashlib.md5(str(k).encode('utf-8')).hexdigest()[:16], k, expressed_hervs_metadata[k]['tumor_cpm'], expressed_hervs_metadata[k]['norm_cpm'], expressed_hervs_metadata[k]['delta'], expressed_hervs_metadata[k]['tpm'], expressed_hervs_metadata[k]['numreads'], orf_rna_coverage[k], ','.join([str(x) for x in orf_het_sites[k]]))
             ofo.write(">{}\n{}\n".format(header, v))
+
+    with open(args.nt_output, 'w') as ofo:
+        for k, v in expressed_hervs_aas.items():
+            header = "MD5:{}".format(hashlib.md5(str(k).encode('utf-8')).hexdigest()[:16])
+            ofo.write(">{}\n{}\n".format(header, ''.join(orf_patient_seq[k])))
+
+def complement(i):
+    comp = {'a': 't',
+            't': 'a',
+            'g': 'c',
+            'c': 'g'}
+    return comp[i.lower()]
 
 
 def add_herv_metadata(args):
     """
     """
+
+    tx_to_tpm = {}                                                                                  
+    tx_to_log2tpm = {}                                                                              
+    tx_to_uqlog2tpm = {}                                                                            
+    with open(args.quants) as qfo:                                                                  
+        tpm_col_idx = ''                                                                            
+        tx_col_idx = ''                                                                             
+        for line_idx, line in enumerate(qfo.readlines()):                                           
+            if line_idx == 0:                                                                       
+                tpm_col_idx = line.split('\t').index('TPM')                                         
+                tx_col_idx = line.split('\t').index('Name')                                         
+            else:                                                                                   
+                line = line.split('\t')
+                if line[tx_col_idx].startswith('Hsap'):
+                    tx_to_tpm[line[tx_col_idx]] = float(line[tpm_col_idx])                
+                else:                                             
+                    tx_to_tpm[line[tx_col_idx].split('.')[0]] = float(line[tpm_col_idx])                
+                                                                                                    
+    for k,v in tx_to_tpm.items():                                                                   
+        tx_to_log2tpm[k] = np.log2(v + 1)                                                           
+                                                                                                    
+    uq = np.percentile(list(tx_to_log2tpm.values()), 75)                                            
+                                                                                                    
+    for k,v in tx_to_log2tpm.items():                                                               
+        tx_to_uqlog2tpm[k] = v/uq   
+
+
     checksum_to_meta_map = {}
     with open(args.peptides) as fo:
         for line in fo.readlines():
@@ -2236,25 +2410,99 @@ def add_herv_metadata(args):
                 checksum_to_meta_map[checksum] = bufr_dict
 
 
+    hsap_external_data = {}
+    hsap_idx_to_col = {}
+    with open(args.geve_data) as fo:
+        for line_idx, line in enumerate(fo.readlines()):
+            if line_idx == 0:
+                line = line.rstrip().split('\t')
+                for col_idx, col in enumerate(line):
+                    hsap_idx_to_col[col_idx] = col
+                print(line)
+            else:
+                line = line.rstrip().split('\t')
+                print(line)
+                id = line[0]
+                hsap_external_data[id] = {}
+                for val_idx, val in enumerate(line):
+                    if val_idx > 0:
+                        hsap_external_data[id][hsap_idx_to_col[val_idx]] = val
+
+    ### Determining gEVE neighbors
+    hsap_neighbors = {}
+    hsap_raw = []
+    for expressed_erv in checksum_to_meta_map.keys():
+        hsap_raw.append(checksum_to_meta_map[expressed_erv]['NAME'])
+
+    hsap_deplexed = {}
+
+    hsap_chrs = [x.split('.')[1] for x in hsap_raw]
+
+    for chr in hsap_chrs:
+        hsap_deplexed[chr] = {}
+        hsap_deplexed[chr]['+'] = []
+        hsap_deplexed[chr]['-'] = []
+
+    print(hsap_deplexed)
+
+    ###Populating the hsap_deplexed dict
+    for hsap in hsap_raw:
+        chr = hsap.split('.')[1]
+        start = hsap.split('.')[2]
+        stop = hsap.split('.')[3]
+        strand= hsap.split('.')[4]
+
+        hsap_deplexed[chr][strand].append([start,stop])
+#    print(hsap_deplexed)
+
+    for hsap in hsap_raw:
+        chr = hsap.split('.')[1]
+        start = hsap.split('.')[2]
+        stop = hsap.split('.')[3]
+        strand= hsap.split('.')[4]
+        midpoint = (int(start) + int(stop))/2
+
+        candidate_neighbors = hsap_deplexed[chr][strand]
+
+        if candidate_neighbors:
+            midpoint_diffs = []
+            for candidate in candidate_neighbors:
+                print(candidate)
+                if start != candidate[0] and stop != candidate[1]:
+                    cand_midpoint = (int(candidate[0]) + int(candidate[1]))/2
+                    mid_to_cand_mid_dist = abs(midpoint - cand_midpoint)
+                    if mid_to_cand_mid_dist < 10000:
+                        midpoint_diffs.append(mid_to_cand_mid_dist)
+                if midpoint_diffs:
+                    desired_midpoint = min(midpoint_diffs)
+                 
+                    for candidate in candidate_neighbors:
+                        cand_midpoint = (int(candidate[0]) + int(candidate[1]))/2
+                        if cand_midpoint == desired_midpoint:
+                            hsap_neighbors[hsap] = {}
+                            hsap_neighbors[hsap]['neighbor'] = "Hsap38.{}.{}.{}.{}".format(chr, candidate[0], candidate[1], strand)
+                            hsap_neighbors[hsap]['distance'] = abs(midpoint - cand_midpoint)
+
+
+    pat_nts = {}
+    geve_aa = {}
+
+    pat_seqs = {}
+    for seq_record in SeqIO.parse(args.peptides, "fasta"):
+        print(seq_record.id)
+        orf = seq_record.id.replace(':', '_')[:15]
+        pat_seqs[orf] = seq_record.seq
+
+    for seq_record in SeqIO.parse(args.geve_nt, "fasta"):
+        geve = seq_record.id.replace(':', '_')[:15]
+        pat_nts[geve] = seq_record.seq
+    
+    for seq_record in SeqIO.parse(args.geve_aa, "fasta"):
+        geve = seq_record.id
+        geve_aa[geve] = seq_record.seq
+
+
     header = ''
-    #tx_abundances = load_tx_abundances(args)
-
-    #print(tx_abundances)
-
-    tx_to_tpm = {}
-#    with open(args.expressed_hervs) as qfo:
-#        tpm_col_idx = ''
-#        tx_col_idx = ''
-#        for line_idx, line in enumerate(qfo.readlines()):
-#            if line_idx == 0:
-#                print(line)
-#                tpm_col_idx = line.split('\t').index('TPM')
-#                tx_col_idx = line.split('\t').index('Name')
-#            else:
-#                line = line.split('\t')
-#                tx_to_tpm[line[tx_col_idx].split('.')[0][:15].replace(':','_')] = line[tpm_col_idx]
-#
-#    herv_expression = {}
 
     output_lines = []
 
@@ -2268,41 +2516,183 @@ def add_herv_metadata(args):
                     header.remove('BindLevel')
                 except:
                     pass
-                header.extend(['gEVE_ORF'])
-                header.extend(['Tumor_CPM'])
-                header.extend(['Norm_CPM'])
-                header.extend(['log2(Tumor_CPM+1)-log2(Norm_CPM+1)'])
-                header.extend(['TPM'])
-                header.insert(0, 'AntigenSource')
-                header = header[:4] + header[9:]
+                header.insert(0, 'antigen_source')
+                header = header[:5] + header[11:]
+                header[1] = 'pos'
+                header[2] = 'mhc_allele'
+                header[3] = 'peptide'
+                header[4] = 'peptide_core'
+                header[5] = 'internal_identifier'
+                header[6] = 'score_el'
+                header[7] = 'percent_rank_el'
+                header[8] = 'score_ba'
+                header[9] = 'percent_rank_ba'
+                header[10] = 'binding_affinity'
+                header.extend(['geve_orf'])
+                header.extend(['tumor_cpm'])
+                header.extend(['norm_cpm'])
+                header.extend(['log2(tumor_cpm+1)-log2(norm_cpm+1)'])
+                header.extend(['tpm'])
+                header.extend(['log2(tpm+1)'])
+                header.extend(['uq(log2(tpm+1))'])
+                header.extend(['geve_viral_blast'])
+                header.extend(['geve_retrotector'])
+                header.extend(['geve_expressed_neighbor_orf'])
+                header.extend(['geve_expressed_neighbor_orf_distance'])
+                header.extend(['geve_peptide_downstream_of_start_codon'])
+                header.extend(['geve_peptide_rna_covered'])
+                header.extend(['geve_peptide_potential_germ_het'])
+                header.extend(['geve_orf_protein_length'])
+                header.extend(['geve_met_orf_protein_length'])
+                header.extend(['nucleotide_context'])
+                header.extend(['protein_context'])
+
             elif len(line) < 16 or line[0] in ['Protein', 'Pos']:
                 continue
             elif float(line[15]) < 1000:
+                line.insert(0, 'ERV')
+                line = line[:5] + line[11:]
+                print(header)
                 if 'SB' in line:
                     line.remove('<=')
                     line.remove('SB')
                 if 'WB' in line:
                     line.remove('<=')
                     line.remove('WB')
-                tumor_cpm = checksum_to_meta_map[line[10]]['TUMOR_CPM']
-                norm_cpm = checksum_to_meta_map[line[10]]['NORM_CPM']
-                delta = checksum_to_meta_map[line[10]]['DELTA']
-                tpm = checksum_to_meta_map[line[10]]['TPM']
-                name = checksum_to_meta_map[line[10]]['NAME']
+                tumor_cpm = checksum_to_meta_map[line[5]]['TUMOR_CPM']
+                norm_cpm = checksum_to_meta_map[line[5]]['NORM_CPM']
+                delta = checksum_to_meta_map[line[5]]['DELTA']
+                tpm = checksum_to_meta_map[line[5]]['TPM']
+                name = checksum_to_meta_map[line[5]]['NAME']
+                print(name)
+                log2tpm = tx_to_log2tpm[name]
+                uqlog2tpm = tx_to_uqlog2tpm[name]
+                #print(hsap_external_data[name])
+                viral_blast = hsap_external_data[name]['Viral_BLAST']
+                retrotector = hsap_external_data[name]['RetroTector']
                 line.extend([name])
                 line.extend([tumor_cpm])
                 line.extend([norm_cpm])
                 line.extend([delta])
                 line.extend([tpm])
-                line = line[:4] + line[9:]
-                line.insert(0, 'ERV')
+                line.extend([log2tpm])
+                line.extend([uqlog2tpm])
+                if viral_blast != '-':
+                    line.extend([viral_blast])
+                else:
+                    line.extend(['NA'])
+                if retrotector != '.':
+                    line.extend([retrotector])
+                else:
+                    line.extend(['NA'])
+                # Neighbor data
+                if name not in hsap_neighbors.keys():
+                    line.extend(['NA', 'NA'])
+                else:
+                    line.extend([hsap_neighbors[name]['neighbor'], hsap_neighbors[name]['distance']])
+
+                # Downstream from start codon
+                if hsap_external_data[name]['strand'] == '+':
+                    met_start = hsap_external_data[name]['MetID'].split('.')[2]
+                    aa_start = hsap_external_data[name]['start']
+                    start_codon_idx = int(met_start) - int(aa_start)
+                    if int(start_codon_idx) > int(line[1]):
+                        line.extend(['False'])
+                    else:
+                        line.extend(['True'])
+
+                    peptide_start = int(hsap_external_data[name]['start']) + int(start_codon_idx)
+                    peptide_stop = peptide_start + len(line[3])
+                   
+
+                    rna_coverage_start = int(checksum_to_meta_map[line[5]]['RNA_COVERAGE_RANGE'].split(',')[0])
+                    rna_coverage_stop = int(checksum_to_meta_map[line[5]]['RNA_COVERAGE_RANGE'].split(',')[1])
+
+                    has_rna_cov = 0
+                    if peptide_start >= rna_coverage_start and peptide_stop <= rna_coverage_stop:
+                        has_rna_cov = 1
+
+                    has_het = 0
+                    for het in checksum_to_meta_map[line[5]]['POTENTIAL_GERMLINE_HETS'][1].strip('[').strip(']').split(','):
+                        if het in range(peptide_start, peptide_stop):
+                            has_het = 1
+
+                    if has_rna_cov:
+                        line.extend(['True'])
+                    else:
+                        line.extend(['False'])
+
+                    if has_het:
+                        line.extend(['True'])
+                    else:
+                        line.extend(['False'])
+                    
+          
+                elif hsap_external_data[name]['strand'] == '-':
+                    met_start = hsap_external_data[name]['MetID'].split('.')[3]
+                    aa_start = hsap_external_data[name]['end']
+                    start_codon_idx = int(aa_start) - int(met_start)
+                    if int(start_codon_idx) > int(line[1]):
+                        line.extend(['False'])
+                    else:
+                        line.extend(['True'])
+                    
+                    peptide_start = int(hsap_external_data[name]['end']) - int(start_codon_idx)
+                    peptide_stop = peptide_start - len(line[3])
+                   
+
+                    rna_coverage_start = int(checksum_to_meta_map[line[5]]['POTENTIAL_GERMLINE_HETS'].strip('(').strip(')').split(',')[1])
+                    rna_coverage_stop = int(checksum_to_meta_map[line[5]]['POTENTIAL_GERMLINE_HETS'].strip('(').strip(')').split(',')[0])
+
+                    has_rna_cov = 0
+                    if peptide_start <= rna_coverage_start and peptide_stop >= rna_coverage_stop:
+                        has_rna_cov = 1
+
+                    has_het = 0
+                    for het in checksum_to_meta_map[line[5]]['POTENTIAL_GERMLINE_HETS'][1].strip('[').strip(']').split(','):
+                        if het in range(peptide_stop, peptide_start):
+                            has_het = 1
+
+                    if has_rna_cov:
+                        line.extend(['True'])
+                    else:
+                        line.extend(['False'])
+
+                    if has_het:
+                        line.extend(['True'])
+                    else:
+                        line.extend(['False'])
+
+                line.extend([hsap_external_data[name]['AA_length']])
+                line.extend([hsap_external_data[name]['Met_AA_length']])
+
+                print(pat_seqs)
+
+                print(str(pat_seqs[line[5]]))
+                print(line[3])
+
+                aa_start_idx = str(pat_seqs[line[5]]).index(line[3])
+                aa_stop_idx = aa_start_idx + len(line[3])
+
+                adjusted_start_idx = aa_start_idx - 8
+                adjusted_stop_idx = aa_stop_idx + 8
+                nt_start_idx = adjusted_start_idx * 3
+                nt_stop_idx = adjusted_stop_idx * 3
+
+                protein_context = str(pat_seqs[line[5]][max(0, adjusted_start_idx):min(adjusted_stop_idx, len(pat_seqs[line[5]]))])
+                nuc_context = str(pat_nts[line[5]][max(0, nt_start_idx):min(nt_stop_idx, len(pat_nts[line[5]]))])
+                line.extend([nuc_context])
+                line.extend([protein_context])
+
+                print(line)
                 output_lines.append(line)
 
     if header and output_lines:
         with open(args.output, 'w') as ofo:
             ofo.write("{}\n".format('\t'.join(header)))
             for line in output_lines:
-                ofo.write("{}\n".format('\t'.join(line)))
+                str_line = [str(x) for x in line]
+                ofo.write("{}\n".format('\t'.join(str_line)))
     else:
         with open(args.output, 'w') as ofo:
             ofo.write("No viable ERV peptides. Try loosening parameters.")
@@ -2316,7 +2706,7 @@ def expressed_self_genes(args):
     gene_list = []
     with open(args.gene_list) as glo:
         for line in glo.readlines():
-            gene_list.append(line.rstrip())
+            gene_list.append(line.rstrip().split('\t')[0])
     tx_abundances = load_tx_abundances(args)
     tx_threhsold = 0
     if not(args.abundance_threshold):
@@ -2335,7 +2725,7 @@ def expressed_self_genes(args):
     with open(args.gtf) as gtfo:
         for line in gtfo.readlines():
             line = line.split('\t')
-            if len(line) > 3 and line[2] == 'transcript':
+            if len(line) > 3 and line[2] == 'transcript' and 'gene_name' in str(line):
                 gene_name = str(line).split('gene_name "')[1].split('"')[0]
                 tx_id = str(line).split('transcript_id "')[1].split('"')[0].split('.')[0]
                 tx_to_gene[tx_id] = gene_name
@@ -2552,10 +2942,12 @@ def add_self_antigen_metadata(args):
     for k,v in tx_to_tpm.items():
         tx_to_log2tpm[k] = np.log2(v + 1)
 
-    uq = np.percentile(tx_to_log2tpm.values(), 75)
+    uq = np.percentile(list(tx_to_log2tpm.values()), 75)
 
     for k,v in tx_to_log2tpm.items():
         tx_to_uqlog2tpm[k] = v/uq
+
+    
 
 #    tx_to_tpm = {}
 #    with open(args.quants) as qfo:
@@ -2574,10 +2966,19 @@ def add_self_antigen_metadata(args):
     with open(args.gtf) as gtfo:
         for line in gtfo.readlines():
             line = line.split('\t')
-            if len(line) > 3 and line[2] == 'transcript':
+            if len(line) > 3 and line[2] == 'transcript' and line[1] != 'geve':
                 gene_name = str(line).split('gene_name "')[1].split('"')[0]
                 tx_id = str(line).split('transcript_id "')[1].split('"')[0].partition('.')[0]
                 tx_to_gene[tx_id] = gene_name
+
+    additional_notes = {}
+    with open(args.gene_list) as glo:
+        for line in glo.readlines():
+            line = line.rstrip().split('\t')
+            if len(line) > 1:
+                additional_notes[line[0]] = line[1]
+            else:
+                additional_notes[line[0]] = 'NA'
 
     output_lines = []
 
@@ -2593,9 +2994,19 @@ def add_self_antigen_metadata(args):
                     header.remove('BindLevel')
                 except:
                     pass
-                header.extend(['GeneName', 'TranscriptIdentifier', 'TPM', 'log2(TPM+1)', 'UQ(log2(TPM+1))'])
-                header.insert(0, 'AntigenSource')
-                header = header[:4] + header[9:]
+                header.extend(['gene_name', 'transcript_identifier', 'tpm', 'log2(tpm+1)', 'uq(log2(tpm+1))', 'additional_notes'])
+                header.insert(0, 'antigen_source')
+                header = header[:5] + header[11:]
+                header[1] = 'pos'
+                header[2] = 'mhc_allele'
+                header[3] = 'peptide'
+                header[4] = 'peptide_core'
+                header[5] = 'internal_identifier'
+                header[6] = 'score_el'
+                header[7] = 'percent_rank_el'
+                header[8] = 'score_ba'
+                header[9] = 'percent_rank_ba'
+                header[10] = 'binding_affinity'
             elif len(line) < 16 or line[0] in ['Protein', 'Pos']:
                 continue
             elif float(line[15]) < 1000:
@@ -2605,18 +3016,16 @@ def add_self_antigen_metadata(args):
                 if 'WB' in line:
                     line.remove('<=')
                     line.remove('WB')
-                tx_id = line[10]
-                gene_name = tx_to_gene[line[10]]
+                line.insert(0, 'Self-Antigen')
+                line = line[:5] + line[11:]
+                tx_id = line[5]
+                gene_name = tx_to_gene[line[5]]
                 # The below line is simply for TCGA-LAML self-antigen filtering
                 # and should be removed eventually.
-                tpm = tx_to_tpm[line[10]]
+                tpm = tx_to_tpm[line[5]]
                 log2tpm = tx_to_log2tpm[tx_id.split('.')[0]]
                 uqlog2tpm = tx_to_uqlog2tpm[tx_id.split('.')[0]]
-                print(line[10])
-                print(tpm)
-                line.extend([gene_name, tx_id,str(tpm), str(log2tpm), str(uqlog2tpm)])
-                line.insert(0, 'Self-Antigen')
-                line = line[:4] + line[9:]
+                line.extend([gene_name, tx_id,str(tpm), str(log2tpm), str(uqlog2tpm), additional_notes[gene_name]])
                 output_lines.append(line)
 
     with open(args.output, 'w') as ofo:
@@ -2643,14 +3052,14 @@ def filter_virdetect_by_counts(args):
         for line in vro.readlines():
             if line.startswith('>'):
                 line = line.rstrip('\n').lstrip('>')
-                raw_refs.append(line.split('|')[3])
+                raw_refs.append(line.split(' ')[0])
 #    viral_counts = {raw_refs[i]:raw_counts[i] for i in range(len(raw_refs)) if int(raw_counts[i]) > int(args.min_threshold)}
     all_viral_counts = {raw_refs[i]:int(raw_counts[i]) for i in range(len(raw_refs))}
     threshold = ''
     if not args.min_threshold:
         counts = [float(x) for x in all_viral_counts.values()]
-        threshold = np.mean(counts) + (3*np.std(counts))
-        print("Count threshold (mean + 3*std): {}".format(threshold))
+        threshold = np.mean(counts) + (5*np.std(counts))
+        print("Count threshold (mean + 5*std): {}".format(threshold))
     else:
         threshold= args.min_threshold
     expressed_viruses = {k:v for k, v in all_viral_counts.items() if int(v) > int(threshold)}
@@ -2663,57 +3072,145 @@ def filter_virdetect_by_counts(args):
 def make_viral_peptides(args):
     """
     """
-    expressed_viruses = {}
-    virus_to_cds = {}
+    alns = pysam.AlignmentFile(args.viral_bam, 'rb')
+
+    expressed_viruses_quant = {}
+    virus_to_contig = {}
     viral_peptide_seqs = {}
-    expressed_viral_peptides = {}
+    expressed_viral_proteins = {}
 
     with open(args.expressed_viruses) as fo:
         for line_idx, line in enumerate(fo.readlines()):
             if line_idx != 0:
                 line = line.rstrip().split('\t')
-                expressed_viruses[line[0]] = line[1]
+                virus_to_contig[line[0].split('|')[3]] = line[0]
+                expressed_viruses_quant[line[0].split('|')[3]] = line[1]
 
-    viral_seqs = {}
+    protein_nts = {}
+    virus_to_cds = {}
+    cds_to_virus = {}
 
     for seq_record in SeqIO.parse(args.fasta, "fasta"):
         map_info = seq_record.description.split('|')[1].split(' ')[0]
         virus_id, unneeded, protein_id = map_info.partition('_cds_')
         protein_id = re.sub(r'_1$', '', protein_id)
+
+        protein_nts[protein_id] = str(seq_record.seq)
+
         if virus_id not in virus_to_cds.keys():
             virus_to_cds[virus_id] = [protein_id]
         else:
             virus_to_cds[virus_id].append(protein_id)
 
-        viral_seqs[protein_id] = seq_record.seq.translate()
+        cds_to_virus[protein_id] = virus_id
 
+    cds_coords = {}
 
-
-    with open(args.fasta) as fo:
+    with open(args.viral_gff) as fo:
         for line in fo.readlines():
-            if line.startswith('>'):
-                line = line.split('|')[1].split(' ')[0]
-                virus_id, unneeded, protein_id = line.partition('_cds_')
-                protein_id = re.sub(r'_1$', '', protein_id)
-                if virus_id not in virus_to_cds.keys():
-                    virus_to_cds[virus_id] = [protein_id]
-                else:
-                    virus_to_cds[virus_id].append(protein_id)
+            line = line.rstrip().split('\t')
+            meta = line[-1]
+            protein_id = {x.split('=')[0]: x.split('=')[1] for x in meta.split(';')}['protein_id']
+            cds_coords[protein_id] = (line[3], line[4])
+
+#    sys.exit(1)
+
+
+#    with open(args.fasta) as fo:
+#        for line in fo.readlines():
+#            if line.startswith('>'):
+#                line = line.split('|')[1].split(' ')[0]
+#                virus_id, unneeded, protein_id = line.partition('_cds_')
+#                protein_id = re.sub(r'_1$', '', protein_id)
+#                if virus_id not in virus_to_cds.keys():
+#                    virus_to_cds[virus_id] = [protein_id]
+#                else:
+#                    virus_to_cds[virus_id].append(protein_id)
 
 #    for seq_record in SeqIO.parse(args.viral_pep_ref, "fasta"):
 #        peptide_id = seq_record.description.split(' ')[0]
 #        viral_peptide_seqs[peptide_id] = seq_record.seq
 
-    for expressed_virus in expressed_viruses.keys():
+    expressed_viral_proteins = {}
+
+    for expressed_virus in expressed_viruses_quant.keys():
+        print(expressed_virus)
         if expressed_virus in virus_to_cds.keys():
-            for protein in virus_to_cds[expressed_virus]:
-                expressed_viral_peptides[protein] = viral_seqs[protein]
+             for protein in virus_to_cds[expressed_virus]:
+                expressed_viral_proteins[protein] = protein_nts[protein]
         else:
             print("Cannot find virus {} in cds data.".format(expressed_virus))
 
+    print(expressed_viral_proteins)
+
+    # evp = expressed viral protein
+    evp_rna_coverage = {}                                                                          
+    evp_het_sites = {}                                                                             
+    evp_patient_seq = {}    
+
+    evp_patient_aas = {}
+
+    for evp, evp_nts in expressed_viral_proteins.items():
+        evp_contig = virus_to_contig[cds_to_virus[evp]]
+        print(evp_contig)
+        evp_start = int(cds_coords[evp][0])
+        evp_stop = int(cds_coords[evp][1])
+        print(evp_start, evp_stop)
+        evp_per_pos_coverage_nt_level = alns.count_coverage(evp_contig, evp_start, evp_stop)
+        evp_per_pos_coverage_total = []
+        for base in evp_per_pos_coverage_nt_level[0]:
+            evp_per_pos_coverage_total.append(0)
+        for base in evp_per_pos_coverage_nt_level:
+            for pos_idx, count in enumerate(base):
+                evp_per_pos_coverage_total[pos_idx] = evp_per_pos_coverage_total[pos_idx] + count
+        print(evp_per_pos_coverage_total)
+        evp_coverage_avg = float(sum(evp_per_pos_coverage_total))/len(evp_per_pos_coverage_total)
+        print(evp_coverage_avg)
+
+        # 25x coverage is an abritrary threshold for now.
+        if evp_coverage_avg >= 25:
+            evp_patient_seq[evp] = []                                                                  
+            evp_het_sites[evp] = []  
+            evp_seq = evp_nts
+            for i in alns.pileup(contig=vpro_contig):
+                print(i)
+            tmp_info = pileup_truncated(alns, evp_contig, evp_start, evp_stop)                    
+            pileup_info = [(x.reference_pos, [i for i in x.get_query_sequences() if i]) for x in tmp_info]
+                                                                                                    
+            covered_pos = []                                                                            
+            for pos_idx, pos in enumerate(pileup_info):                                                 
+                                                                                                    
+                query_seqs = [x.lower() for x in pos[1]]                                                
+                print(query_seqs)
+                if not query_seqs:                                                                      
+                    evp_patient_seq[evp].append(evp_nts[pos_idx])                                     
+                if query_seqs:                                                                          
+                    covered_pos.append(pos[0])                                                          
+                    counts= {x:query_seqs.count(x) for x in query_seqs}                                 
+                    most_freq_finder = lambda x: scipy.stats.mode(x)[0][0]                              
+                    most_freq_base = most_freq_finder(query_seqs)                                       
+                    evp_patient_seq[evp].append(most_freq_base)                                        
+                    mismatch = ''                                                                       
+                    if vpro_seq[pos_idx] != most_freq_base:                                             
+                        mismatch = "Mismatch"                                                           
+                    print("{}\t{}\t{}\t{}".format(pos[0], herv_seq[pos_idx], most_freq_base, mismatch)) 
+                    most_freq_base_freq = float(query_seqs.count(most_freq_base))/len(query_seqs)       
+                    if float(most_freq_base_freq) < 0.80:                                               
+                        evp_het_sites[evp].append(pos[0])                                              
+                        print("WARNING: Possible germline mutation!")                                   
+                        print("{}\t{}\t{}\t{}\t{}".format(pos[0], herv_seq[pos_idx], most_freq_base, query_seqs.count(most_freq_base)/len(query_seqs), counts))
+
+            evp_rna_coverage[evp] = "{},{}".format(covered_pos[0]+1, covered_pos[-1]+1)                
+                                                                                                    
+                                                                                                    
+    for id, seq in evp_patient_seq.items():                                                    
+        aa_seq = Seq(''.join(seq)).translate(to_stop=True)                          
+        evp_pateint_aas[id] = aa_seq    
+
+
     with open(args.output, 'w') as ofo:
-        for expressed_viral_peptide_id, expressed_viral_peptide_seq in expressed_viral_peptides.items():
-            ofo.write(">{}\n{}\n".format(expressed_viral_peptide_id, expressed_viral_peptide_seq))
+        for id, seq in evp_patient_aas:
+            ofo.write(">{}\n{}\n".format(id, seq))
 
 
 def add_viral_metadata(args):
@@ -2739,18 +3236,46 @@ def add_viral_metadata(args):
     output_lines = []
     header = []
 
+
+    viral_protein_names = {}
+    viral_names = {}
+    with open(args.viral_pep_ref) as fo:
+        for line in fo.readlines():
+            if line.startswith('>'):
+                line = line.rstrip()
+                part = line.partition(' ')
+                viral_protein_id = part[0].lstrip('>')
+
+                id_and_name = part[2].partition('[')
+                viral_protein_name = id_and_name[0]
+                virus_name = id_and_name[2]
+                viral_protein_names[viral_protein_id] = viral_protein_name.rstrip(' ')
+                viral_names[viral_protein_id] = virus_name.rstrip(']')
+
+    print(viral_names)
+
     with open(args.binding_affinities) as fo:
         for line_idx, line in enumerate(fo.readlines()):
             line = line.rstrip().split()
             if len(line) >= 16 and line[0] == 'Pos':
                 header = line
+                header.insert(0, 'antigen_source')
+                header = header[:5] + header[11:]
                 try:
                     header.remove('BindLevel')
                 except:
                     pass
-                header.extend(['VirusIdentifier', 'ReadCount'])
-                header.insert(0, 'AntigenSource')
-                header = header[:4] + header[9:]
+                header.extend(['virus_protein_identifier', 'virus_protein_name', 'virus_identifier', 'virus_name', 'rna_read_count'])
+                header[1] = 'pos'
+                header[2] = 'mhc_allele'
+                header[3] = 'peptide'
+                header[4] = 'peptide_core'
+                header[5] = 'internal_identifier'
+                header[6] = 'score_el'
+                header[7] = 'percent_rank_el'
+                header[8] = 'score_ba'
+                header[9] = 'percent_rank_ba'
+                header[10] = 'binding_affinity'
             elif len(line) < 16 or line[0] in ['Protein', 'Pos']:
                 continue
             elif float(line[15]) < 1000:
@@ -2760,14 +3285,16 @@ def add_viral_metadata(args):
                 if 'WB' in line:
                     line.remove('<=')
                     line.remove('WB')
-                #This should be extended to replace and _[0-9] to .[0-9]
-                orig_index = line[10].rfind('_')
-                virus_id = cds_to_virus[line[10][:orig_index] + '.' + line[10][orig_index+1:]]
-                read_counts = expressed_viruses[virus_id]
-                print(read_counts)
-                line.extend([virus_id, read_counts])
                 line.insert(0, 'Virus')
-                line = line[:4] + line[9:]
+                line = line[:5] + line[11:]
+                #This should be extended to replace and _[0-9] to .[0-9]
+                orig_index = line[5].rfind('_')
+                virus_cds = line[5][:orig_index] + '.' + line[5][orig_index+1:]
+                virus_id = cds_to_virus[virus_cds]
+                read_counts = expressed_viruses[virus_id]
+                viral_name = viral_names[virus_cds]
+                viral_protein_name = viral_protein_names[virus_cds]
+                line.extend([virus_cds, viral_protein_name, virus_id, viral_name, read_counts])
                 output_lines.append(line)
 
     with open(args.output, 'w') as ofo:
@@ -2788,30 +3315,65 @@ def make_fusion_peptides(args):
                 header_map = {j:i for i, j in enumerate(line)}
              else:
                  if line[header_map['FUSION_TRANSL']] != '.':
+                     start_prot = 0
+                     nuc_sub = 48
+                     print(line[header_map['#FusionName']])
+                     print(line[header_map['CDS_LEFT_RANGE']])
+                     print(line[header_map['CDS_LEFT_RANGE']].split('-')[1])
+                     valid_fusions[line[header_map['#FusionName']]] = {}
+                     if float(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) % 3 == 0:
+                         print("Direct translate")
+                         start_prot = int(int(int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]))/3)
+                     elif (float(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - 1) % 3 == 0:
+                         print("Minus one")
+                         start_prot = int(int(int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - 1)/3)
+                         nuc_sub = nuc_sub + 1
+                     elif (float(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - 2) % 3 == 0:
+                         print("Minus two")
+                         start_prot = int(int(int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - 2)/3)
+                         nuc_sub = nuc_sub + 2
+                     else:
+                         print("No luck")
+                     print(start_prot)
                      if line[header_map['PROT_FUSION_TYPE']] == 'INFRAME':
-                         start_prot = (int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - 1)/3
+                         print('inframe')
                          peptide = line[header_map['FUSION_TRANSL']][start_prot - 8:start_prot + 8]
+                         peptide_context = line[header_map['FUSION_TRANSL']][start_prot - 16:start_prot + 16]
+                         nuc_context = line[header_map['FUSION_CDS']][int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - nuc_sub:int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) + nuc_sub]
                          if not(re.search('\*', peptide)):
-                             valid_fusions[line[header_map['#FusionName']]] = peptide
+                             valid_fusions[line[header_map['#FusionName']]]['peptide'] = peptide
+                             valid_fusions[line[header_map['#FusionName']]]['peptide_context'] = peptide_context
+                             valid_fusions[line[header_map['#FusionName']]]['nuc_context'] = nuc_context
                      elif line[header_map['PROT_FUSION_TYPE']] == 'FRAMESHIFT':
-                         start_prot = (int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - 1)/3
+                         print('frameshift')
                          init_peptide = line[header_map['FUSION_TRANSL']][start_prot - 8:]
+                         init_peptide_context = line[header_map['FUSION_TRANSL']][start_prot - 16:]
+                         init_nuc_context = line[header_map['FUSION_CDS']][int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - nuc_sub:]
                          print(init_peptide)
                          if re.search('\*', init_peptide):
                              stop_codon = init_peptide.index('*')
                              peptide = init_peptide[:stop_codon]
-                             valid_fusions[line[header_map['#FusionName']]] = peptide
+                             peptide_context = init_peptide_context[:stop_codon+8]
+                             valid_fusions[line[header_map['#FusionName']]]['peptide'] = peptide
+                             valid_fusions[line[header_map['#FusionName']]]['peptide_context'] = peptide_context
+                             valid_fusions[line[header_map['#FusionName']]]['nuc_context'] = init_nuc_context
                          else:
-                             valid_fusions[line[header_map['#FusionName']]] = init_peptide
+                             valid_fusions[line[header_map['#FusionName']]]['peptide'] = init_peptide
+                             valid_fusions[line[header_map['#FusionName']]]['peptide_context'] = init_peptide_context
+                             valid_fusions[line[header_map['#FusionName']]]['nuc_context'] = init_nuc_context
 
      with open(args.output, 'w') as ofo:
-         for valid_fusion_id, valid_fusion_seq in valid_fusions.items():
-             ofo.write(">{}\n{}\n".format(valid_fusion_id, valid_fusion_seq))
+         for valid_fusion_id in valid_fusions.keys():
+             print(valid_fusion_id)
+             meta = valid_fusions[valid_fusion_id]
+             print(meta)
+             ofo.write(">{} NUCLEOTIDE_CONTEXT:{} PEPTIDE_CONTEXT:{}\n{}\n".format(valid_fusion_id, meta['nuc_context'], meta['peptide_context'], meta['peptide']))
 
 
 def add_fusion_metadata(args):
     """
     """
+
     fusion_metadata = {}
     with open(args.fusions) as fo:
         col_to_idx = {}
@@ -2825,11 +3387,24 @@ def add_fusion_metadata(args):
                 for elem_idx, elem in enumerate(line[1:]):
                     fusion_metadata[line[0][:15]][col_to_idx[elem_idx + 1]] = elem
 
+    with open(args.fasta) as fo:
+        for line in fo.readlines():
+            if line.startswith('>'):
+                line = line.lstrip('>').rstrip().split(' ')
+                nuc_context = line[1].split(':')[1] 
+                protein_context = line[2].split(':')[1] 
+                fusion_metadata[line[0][:15]]['nuc_context'] = nuc_context
+                fusion_metadata[line[0][:15]]['protein_context'] = protein_context
+
     print(fusion_metadata)
 
-    extensions = ['JunctionReadCount', 'SpanningFragCount', 'SpliceType', 'LeftGene',
-                  'LeftBreakpoint', 'RightGene', 'RightBreakpoint', 'LargeAnchorSupport',
-                  'FFPM', 'PROT_FUSION_TYPE', 'annots']
+    metadata = ['JunctionReadCount', 'SpanningFragCount', 'SpliceType', 'LeftGene',
+                           'LeftBreakpoint', 'LeftBreakDinuc', 'LeftBreakEntropy', 'RightGene', 'RightBreakpoint', 'RightBreakDinuc', 'RightBreakEntropy', 'LargeAnchorSupport',
+                           'FFPM', 'PROT_FUSION_TYPE', 'annots']
+
+    header_extension = ['fusion_junction_read_count', 'fusion_spanning_frag_count', 'fusion_splice_type', 'fusion_left_gene', 'fusion_left_breakpoint', 'fusion_left_break_dinuc', 'fusion_left_break_entropy', 'fusion_right_gene', 'fusion_right_breakpoint', 'fusion_right_break_dinuc', 'fusion_right_break_entropy', 'fusion_large_anchor_supprot', 'ffpm', 'fusion_type', 'fusion_annotations', 'nucleotide_context', 'protein_context']
+
+
     output_lines = []
     header = []
 
@@ -2842,12 +3417,23 @@ def add_fusion_metadata(args):
                     header.remove('BindLevel')
                 except:
                     pass
-                header_extension = extensions[:]
-                header_extension[-1] = 'FusionAnnotations'
-                header_extension[-2] = 'FusionType'
+#                header_extension = extensions[:]
                 header.extend(header_extension)
-                header.insert(0, 'AntigenSource')
-                header = header[:4] + header[9:]
+                header.insert(0, 'antigen_source')
+#                print(header)
+                header = header[:5] + header[11:]
+#                print(header)
+#                sys.exit(0)
+                header[1] = 'pos'
+                header[2] = 'mhc_allele'
+                header[3] = 'peptide'
+                header[4] = 'peptide_core'
+                header[5] = 'internal_identifier'
+                header[6] = 'score_el'
+                header[7] = 'percent_rank_el'
+                header[8] = 'score_ba'
+                header[9] = 'percent_rank_ba'
+                header[10] = 'binding_affinity'
             elif len(line) < 16 or line[0] in ['Protein', 'Pos']:
                 continue
             elif float(line[15]) < 1000:
@@ -2857,13 +3443,38 @@ def add_fusion_metadata(args):
                 if 'WB' in line:
                     line.remove('<=')
                     line.remove('WB')
-                relevant_metadata = fusion_metadata[line[10].replace('_', '.')]
                 line.insert(0, 'FusionEvent')
+                line = line[:5] + line[11:]
+                
+                idx_start = fusion_metadata[line[5].rsplit('_')[0].replace('_', '.')]['protein_context'].index(line[3])
+                idx_stop = idx_start + len(line[3])
+                adjusted_protein_idx_start = idx_start - 8
+                adjusted_protein_idx_stop = idx_stop + 8
+                nuc_idx_start = adjusted_protein_idx_start * 3
+                nuc_idx_stop = adjusted_protein_idx_stop * 3
+
+                print(adjusted_protein_idx_start)
+                print(adjusted_protein_idx_stop)
+                print(nuc_idx_start)
+                print(nuc_idx_stop)
+
+                print(line[5])
+                print(line[5].rsplit('_')[0])
+                protein_context = fusion_metadata[line[5].rsplit('_')[0].replace('_', '.')]['protein_context'][max(0, adjusted_protein_idx_start):min(adjusted_protein_idx_stop, len(fusion_metadata[line[5].rsplit('_')[0].replace('_', '.')]['protein_context']))]
+                nuc_context = fusion_metadata[line[5].rsplit('_')[0].replace('_', '.')]['nuc_context'][max(0, nuc_idx_start):min(nuc_idx_stop, len(fusion_metadata[line[5].rsplit('_')[0].replace('_', '.')]['nuc_context']))]
+
+                print("Peptide: {}".format(line[3]))
+                print("Full protein context: {}".format(fusion_metadata[line[5].rsplit('_')[0].replace('_', '.')]['protein_context']))
+                print("Protein context: {}".format(protein_context))
+                print("Nucleotide context: {}".format(nuc_context))
+
+                relevant_metadata = fusion_metadata[line[5].rsplit('_')[0].replace('_', '.')]
                 line_extension = []
-                for extension in extensions:
-                    line_extension.append(relevant_metadata[extension])
+                for metadatum in metadata:
+                    line_extension.append(relevant_metadata[metadatum])
+                line_extension.append(nuc_context)
+                line_extension.append(protein_context)
                 line.extend(line_extension)
-                line = line[:4] + line[9:]
                 output_lines.append(line)
 
     if header and output_lines:
@@ -3064,11 +3675,11 @@ def add_tcga_data(args):
            if line_idx == 0:
                for col_idx, col in enumerate(line):
                    col_idx_map[col] = col_idx
-               line.extend(['TCGA_TPM_Mean', 'TCGA_TPM_Median', 'TCGA_TPM_Max', 'TCGA_TPM_IQR', 'TCGA_TPM_Percentile'])
+               line.extend(['tcga_tpm_mean', 'tcga_tpm_median', 'tcga_tpm_max', 'tcga_tpm_iqr', 'tcga_tpm_percentile'])
                new_output_lines.append(line)
            else:
-               if line[col_idx_map['AntigenSource']] in ['SNV', 'InDel']:
-                   tx_id = line[col_idx_map['TranscriptIdentifier']].split('.')[0]
+               if line[col_idx_map['antigen_source']] in ['SNV', 'InDel']:
+                   tx_id = line[col_idx_map['transcript_identifier']].split('.')[0]
                    if tx_id in tumor_spec_metrics_nov.keys():
                        tx_id_mean = float(tumor_spec_metrics_nov[tx_id]['mean'])
                        under_sum = sum([1 for x in all_tumor_spec_means if float(x) < float(tumor_spec_metrics_nov[tx_id]['mean'])])
@@ -3142,6 +3753,8 @@ def main():
         get_snv_genomic_context(args)
     if args.command == 'filter-expressed-hervs':
         expressed_hervs(args)
+    if args.command == 'get-expressed-hervs-bed':
+        get_expressed_hervs_bed(args)
     if args.command == 'make-herv-peptides':
         make_herv_peptides(args)
     if args.command == 'add-herv-metadata':
