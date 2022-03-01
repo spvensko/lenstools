@@ -1,216 +1,100 @@
-#!vusr/bin/env python
+#!/usr/bin/env python3
 
-import pandas as pd
 import argparse
-import vcf
 from Bio import SeqIO
 from Bio.SeqUtils import seq1
 from Bio.SeqUtils import Seq
-import re
-import sys
-from pprint import pprint
-import numpy as np
-from scipy import stats
 import csv
-import pysam
-import scipy
-import hashlib
-import os
-
-#import pandas as pd
 from glob import glob
-
+import hashlib
+import numpy as np
+import os
+import pysam
+import pandas as pd
+from pprint import pprint
 from pysam.libcalignmentfile import IteratorColumnRegion
+import re
+import scipy
+from scipy import stats
+import sys
+import vcf
+
 
 def get_args():
     """
     """
     parser = argparse.ArgumentParser(prog="lenstools",
                                      description="lenstools")
-
     subparsers = parser.add_subparsers(dest='command')
 
-    # Subparser for generating peptides by missense SNVs
-    parser_make_snv_peptides = subparsers.add_parser('make-snv-peptides',
-                                                     help="Make SNV peptides FASTA.")
-    parser_make_snv_peptides.add_argument('-t', '--tx-aa-fasta',
-                                          help="Transcript (CDS) amino acid sequences.",
-                                          required=True)
-    parser_make_snv_peptides.add_argument('-c', '--tx-cds-fasta',
-                                          help="Transcript (CDS) nucleotide sequenes.",
-                                          required=True)
-    parser_make_snv_peptides.add_argument('-v', '--somatic-vcf',
-                                          help="Annotated (snpEff) somatic VCF.",
-                                          required=True)
-    #Revisit the peptide length argument. We probably want to emit 15-mers
-    #since that allows for an 8-mer sliding window in which all sequences contain
-    #the mutant peptide.
-    parser_make_snv_peptides.add_argument('-l', '--length',
-                                          help="Emitted peptide length. (default: 11)",
-                                          default=11)
-    parser_make_snv_peptides.add_argument('-n', '--context-nt-length',
-                                          help="Emitted contextual nucleotide sequence length (default: 39)",
-                                          default=39)
-    parser_make_snv_peptides.add_argument('-o', '--mt-output',
-                                          help="Output mutant peptides FASTA.",
-                                          required=True)
-    parser_make_snv_peptides.add_argument('--nt-output',
-                                          help="Output mutant peptides FASTA.",
-                                          required=True)
-    parser_make_snv_peptides.add_argument('-w', '--wt-output',
-                                          #Note: Wildtype means REFERENCE! Need
-                                          #to incorporate patient variants for
-                                          #agretopicity calculations.
-                                          help="Output wildtype peptides output file.",
-                                          required=True)
-  
+
     # Subparser for generating peptides by coding InDels
-    parser_make_indel_peptides_context = subparsers.add_parser('make-indel-peptides-context',
-                                                     help="Make SNV peptides FASTA.")
-#    parser_make_indel_peptides_context.add_argument('-t-a1', '--tumor-allele1-exons',
-#                                          required=True)
-#    parser_make_indel_peptides_context.add_argument('-t-a2', '--tumor-allele2-exons',
-#                                          required=True)
-#    parser_make_indel_peptides_context.add_argument('-tpv', '--tumor-phased-vcf',
-#                                          required=True)
-    parser_make_indel_peptides_context.add_argument('-vts', '--var-tx-seqs',
-                                                   help="Contains filtered expressed somatic variants of interest.",
-                                          required=True)
-    parser_make_indel_peptides_context.add_argument('-st', '--somatic-txs',
-                                                   help="Contains filtered expressed somatic variants of interest.",
-                                          required=True)
-    parser_make_indel_peptides_context.add_argument('-sv', '--somatic-vcf',
-                                                   help="Contains filtered expressed somatic variants of interest.",
-                                          required=True)
-    parser_make_indel_peptides_context.add_argument('-g', '--gtf',
-                                          help="GTF containing canonical transcript data.",
-                                          required=True)
-    #Revisit the peptide length argument. We probably want to emit 15-mers
-    #since that allows for an 8-mer sliding window in which all sequences contain
-    #the mutant peptide.
-    parser_make_indel_peptides_context.add_argument('-l', '--length',
-                                          help="Emitted peptide length. (default: 11)",
-                                          default=11)
-    parser_make_indel_peptides_context.add_argument('-n', '--context-nt-length',
-                                          help="Emitted contextual nucleotide sequence length (default: 39)",
-                                          default=39)
-    parser_make_indel_peptides_context.add_argument('-o', '--output',
-                                          help="Output mutant peptides FASTA.",
-                                          required=True)
-    parser_make_indel_peptides_context.add_argument('--nt-output',
-                                          help="Output mutant peptides FASTA.",
-                                          required=True)
-    
-    
-  # Subparser for generating peptides by missense SNVs
-    parser_make_snv_peptides_context = subparsers.add_parser('make-snv-peptides-context',
-                                                     help="Make SNV peptides FASTA.")
-#    parser_make_snv_peptides_context.add_argument('-t-a1', '--tumor-allele1-exons',
-#                                          required=True)
-#    parser_make_snv_peptides_context.add_argument('-t-a2', '--tumor-allele2-exons',
-#                                          required=True)
-#    parser_make_snv_peptides_context.add_argument('-n-a1', '--normal-allele1-exons',
-#                                          required=True)
-#    parser_make_snv_peptides_context.add_argument('-n-a2', '--normal-allele2-exons',
-#                                          required=True)
-#    parser_make_snv_peptides_context.add_argument('-tpv', '--tumor-phased-vcf',
-#                                          required=True)
-    parser_make_snv_peptides_context.add_argument('-vts', '--var-tx-seqs',
-                                                   help="Contains filtered expressed somatic variants of interest.",
-                                          required=True)
-    parser_make_snv_peptides_context.add_argument('-st', '--somatic-txs',
-                                                   help="Contains filtered expressed somatic variants of interest.",
-                                          required=True)
-    parser_make_snv_peptides_context.add_argument('-sv', '--somatic-vcf',
-                                                   help="Contains filtered expressed somatic variants of interest.",
-                                          required=True)
-    parser_make_snv_peptides_context.add_argument('-g', '--gtf',
-                                          help="GTF containing canonical transcript data.",
-                                          required=True)
-    #Revisit the peptide length argument. We probably want to emit 15-mers
-    #since that allows for an 8-mer sliding window in which all sequences contain
-    #the mutant peptide.
-    parser_make_snv_peptides_context.add_argument('-l', '--length',
-                                          help="Emitted peptide length. (default: 11)",
-                                          default=11)
-    parser_make_snv_peptides_context.add_argument('-n', '--context-nt-length',
-                                          help="Emitted contextual nucleotide sequence length (default: 39)",
-                                          default=39)
-    parser_make_snv_peptides_context.add_argument('-o', '--mt-output',
-                                          help="Output mutant peptides FASTA.",
-                                          required=True)
-    parser_make_snv_peptides_context.add_argument('--nt-output',
-                                          help="Output mutant peptides FASTA.",
-                                          required=True)
-    parser_make_snv_peptides_context.add_argument('-w', '--wt-output',
-                                          #Note: Wildtype means REFERENCE! Need
-                                          #to incorporate patient variants for
-                                          #agretopicity calculations.
-                                          help="Output wildtype peptides output file.",
-                                          required=True)
-    
-    # Subparser for generating peptides by missense SNVs
-    parser_make_snv_peptides = subparsers.add_parser('make-snv-peptides',
-                                                     help="Make SNV peptides FASTA.")
-    parser_make_snv_peptides.add_argument('-t', '--tx-aa-fasta',
-                                          help="Transcript (CDS) amino acid sequences.",
-                                          required=True)
-    parser_make_snv_peptides.add_argument('-c', '--tx-cds-fasta',
-                                          help="Transcript (CDS) nucleotide sequenes.",
-                                          required=True)
-    parser_make_snv_peptides.add_argument('-v', '--somatic-vcf',
-                                          help="Annotated (snpEff) somatic VCF.",
-                                          required=True)
-    #Revisit the peptide length argument. We probably want to emit 15-mers
-    #since that allows for an 8-mer sliding window in which all sequences contain
-    #the mutant peptide.
-    parser_make_snv_peptides.add_argument('-l', '--length',
-                                          help="Emitted peptide length. (default: 11)",
-                                          default=11)
-    parser_make_snv_peptides.add_argument('-n', '--context-nt-length',
-                                          help="Emitted contextual nucleotide sequence length (default: 39)",
-                                          default=39)
-    parser_make_snv_peptides.add_argument('-o', '--mt-output',
-                                          help="Output mutant peptides FASTA.",
-                                          required=True)
-    parser_make_snv_peptides.add_argument('-w', '--wt-output',
-                                          #Note: Wildtype means REFERENCE! Need
-                                          #to incorporate patient variants for
-                                          #agretopicity calculations.
-                                          help="Output wildtype peptides output file.",
-                                          required=True)
-
-
-    # Subparser for generating indel peptides
-    #Revisit the peptide length argument. We probably want to emit 15-mers
-    #since that allows for an 8-mer sliding window in which all sequences contain
-    #the mutant peptide.
-    parser_make_indel_peptides = subparsers.add_parser('make-indel-peptides',
-                                                       help="Make InDel peptides FASTA.")
-    parser_make_indel_peptides.add_argument('-t', '--tx-aa-fasta',
-                                            help="Transcript (CDS) amino acid sequences.",
+    parser_make_indel_peps_context = subparsers.add_parser('make-indel-peptides-context',
+                                                            help="Make InDel peptides FASTA.")
+    parser_mk_indel_peps_cntxt.add_argument('-vts', '--var-tx-seqs',
+                                            help="Directory with var-specific transcript sequences.",
+                                           required=True)
+    parser_mk_indel_peps_cntxt.add_argument('-st', '--somatic-txs',
+                                            help="Expressed transcripts harboring somatic InDels.",
                                             required=True)
-    parser_make_indel_peptides.add_argument('-c', '--tx-cds-fasta',
-                                            help="Transcript (CDS) nucleotide sequences.",
+    parser_mk_indel_peps_cntxt.add_argument('-sv', '--somatic-vcf',
+                                            help="Contains filtered expressed somatic variants of interest.",
                                             required=True)
-    parser_make_indel_peptides.add_argument('-v', '--somatic-vcf',
-                                            help="Annotated (snpEff) VCF).",
-                                            required=True)
-    parser_make_indel_peptides.add_argument('-l', '--length',
-                                            help="Total peptide length. (default: 7)",
-                                            default=7)
-    parser_make_indel_peptides.add_argument('-o', '--output',
+    parser_mk_indel_pepes_cntxt.add_argument('-g', '--gtf',
+                                             help="GTF with gene annotations.",
+                                             required=True)
+    parser_mk_indel_peps_cntxt.add_argument('-l', '--length',
+                                            help="Emitted peptide length. (default: 11)",
+                                            default=11)
+    parser_mk_indel_peps_cntxt.add_argument('-n', '--context-nt-length',
+                                            help="Emitted contextual nucleotide sequence length (default: 39)",
+                                            default=39)
+    parser_mk_indel_peps_cntxt.add_argument('-o', '--output',
                                             help="Output mutant peptides FASTA.",
                                             required=True)
-
+    parser_mk_indel_peps_cntxt.add_argument('--nt-output',
+                                            help="Output mutant nucleotides FASTA.",
+                                            required=True)
+    
+    
+    # Subparser for generating peptides by missense SNVs
+    parser_mk_snv_peps_cntxt = subparsers.add_parser('make-snv-peptides-context',
+                                                     help="Make SNV peptides FASTA.")
+    parser_mk_snv_peps_cntxt.add_argument('-vts', '--var-tx-seqs',
+                                          help="Directory with var-specific transcript sequences.",
+                                          required=True)
+    parser_mk_snv_peps_cntxt.add_argument('-st', '--somatic-txs',
+                                          help="Expressed transcripts harboring somatic SNVs.",
+                                          required=True)
+    parser_mk_snv_peps_cntxt.add_argument('-sv', '--somatic-vcf',
+                                          help="Contains filtered expressed somatic variants of interest.",
+                                          required=True)
+    parser_mk_snv_peps_cntxt.add_argument('-g', '--gtf',
+                                          help="GTF with gene annotations.",
+                                          required=True)
+    parser_mk_snv_peps_cntxt.add_argument('-l', '--length',
+                                          help="Emitted peptide length. (default: 11)",
+                                          default=11)
+    parser_mk_snv_peps_cntxt.add_argument('-n', '--context-nt-length',
+                                          help="Emitted contextual nucleotide sequence length (default: 39)",
+                                          default=39)
+    parser_mk_snv_peps_cntxt.add_argument('-o', '--mt-output',
+                                          help="Output mutant peptides FASTA.",
+                                          required=True)
+    parser_mk_snv_peps_cntxt.add_argument('--nt-output',
+                                          help="Output mutant nucleotides  FASTA.",
+                                          required=True)
+    parser_mk_snv_peps_cntxt.add_argument('-w', '--wt-output',
+                                          help="Output wildtype peptides FASTA.",
+                                          required=True)
+    
 
     # Subparser for making hERV peptides
-    parser_make_herv_peptides = subparsers.add_parser('make-herv-peptides',
-                                                      help="make ERV peptides FASTA.")
-    parser_make_herv_peptides.add_argument('-e', '--expressed-hervs',
-                                           help="File containg list of Expressed hERVs",
-                                           required=True)
-    #Huh?
+    parser_mk_herv_peps = subparsers.add_parser('make-herv-peptides',
+                                                help="make ERV peptides FASTA.")
+    parser_mk_herv_peps.add_argument('-e', '--expressed-hervs',
+                                     help="File containg list of Expressed hERVs",
+                                     required=True)
     parser_make_herv_peptides.add_argument('-r', '--patient-hervs', #Rename to patient-hervs-fasta?
                                            help="Patient hERV FASTA.",
                                            required=True)
