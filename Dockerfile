@@ -12,7 +12,6 @@ RUN apt-get update --fix-missing &&  \
     libatlas-base-dev libroot-math-mathmore-dev
 
 COPY lenstools.py /opt/lenstools/lenstools.py
-COPY lenstools_w_final_report.py /opt/lenstools/lenstools_w_final_report.py
 RUN chmod +x /opt/lenstools/*
 
 RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda2-4.5.11-Linux-x86_64.sh -O ~/miniconda.sh && \
