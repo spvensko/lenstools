@@ -34,7 +34,7 @@ def get_args():
                                                        help="Make InDel peptides FASTA.")
     parser_mk_indel_peps_cntxt.add_argument('-vts', '--var-tx-seqs',
                                             help="Directory with var-specific transcript sequences.",
-                                           required=True)
+                                            required=True)
     parser_mk_indel_peps_cntxt.add_argument('-st', '--somatic-txs',
                                             help="Expressed transcripts harboring somatic InDels.",
                                             required=True)
@@ -42,8 +42,8 @@ def get_args():
                                             help="Contains filtered expressed somatic variants of interest.",
                                             required=True)
     parser_mk_indel_peps_cntxt.add_argument('-g', '--gtf',
-                                             help="GTF with gene annotations.",
-                                             required=True)
+                                            help="GTF with gene annotations.",
+                                            required=True)
     parser_mk_indel_peps_cntxt.add_argument('-l', '--length',
                                             help="Emitted peptide length. (default: 11)",
                                             default=11)
@@ -94,11 +94,11 @@ def get_args():
     parser_mk_erv_peps = subparsers.add_parser('make-erv-peptides',
                                                help="make ERV peptides FASTA.")
     parser_mk_erv_peps.add_argument('-e', '--expressed-ervs',
-                                     help="File containg list of Expressed ERVs",
-                                     required=True)
+                                    help="File containg list of Expressed ERVs",
+                                    required=True)
     parser_mk_erv_peps.add_argument('-r', '--patient-ervs-fasta',
-                                     help="Patient ERV FASTA (with homozygous germline vars).",
-                                     required=True)
+                                    help="Patient ERV FASTA (with homozygous germline vars).",
+                                    required=True)
     parser_mk_erv_peps.add_argument('-s', '--species',
                                     help="Species (e.g. mm). Default: hs",
                                     default='hs')
@@ -126,7 +126,7 @@ def get_args():
 
     # Subparser for making self-antigen peptides
     parser_mk_self_peps = subparsers.add_parser('make-self-antigen-peptides',
-                                                      help="Make CTA/self-antigen peptides FASTA.")
+                                                help="Make CTA/self-antigen peptides FASTA.")
     parser_mk_self_peps.add_argument('-s', '--selfs-seqs-fasta',
                                      help="CTA/Self-antigens FASTA (with homozygous germline vars).",
                                      required=True)
@@ -217,30 +217,30 @@ def get_args():
     parser_add_erv_metadata = subparsers.add_parser('add-erv-metadata',
                                                      help="Add ERV peptides metadata.")
     parser_add_erv_metadata.add_argument('-p', '--peptides',
-                                          help="Annotated peptide file.",
-                                          required=True)
+                                         help="Annotated peptide file.",
+                                         required=True)
     parser_add_erv_metadata.add_argument('-b', '--binding-affinities',
-                                          help="Binding affinities file (NetMHCpan-4.1b format).",
-                                          required=True)
+                                         help="Binding affinities file (NetMHCpan-4.1b format).",
+                                         required=True)
     parser_add_erv_metadata.add_argument('-q', '--quants',
-                                           help="Tumor transcript abundance file (Salmon format).",
-                                           required=True)
-    #Huh? This VCF comes from the simple consensus workflow.
+                                         help="Tumor transcript abundance file (Salmon format).",
+                                         required=True)
+    #This VCF comes from the simple consensus workflow.
     parser_add_erv_metadata.add_argument('-v', '--patient-vcf',
-                                           help="Patient ERV VCF",
-                                           required=True)
+                                         help="Patient ERV VCF",
+                                         required=True)
     parser_add_erv_metadata.add_argument('-n', '--nt',
-                                           help="Patient-specific ERV FASTA",
-                                           required=True)
+                                         help="Patient-specific ERV FASTA",
+                                         required=True)
     parser_add_erv_metadata.add_argument('-d', '--geve-data',
-                                          help="External gEVE data.",
-                                          required=True)
+                                         help="External gEVE data.",
+                                         required=True)
     parser_add_erv_metadata.add_argument('-t', '--trim-chr-prefix',
-                                          help="Trim the chr prefix from gEVE references.",
-                                          action='store_true')
+                                         help="Trim the chr prefix from gEVE references.",
+                                         action='store_true')
     parser_add_erv_metadata.add_argument('-o', '--output',
-                                          help="Output ERV report",
-                                          required=True)
+                                         help="Output ERV report",
+                                         required=True)
 
 
     # Subparser for getting viral metadata
@@ -333,18 +333,17 @@ def get_args():
     parser_isolated_variants = subparsers.add_parser('filter-isolated-variants',
                                                      help="Filter isolated variants.")
     parser_isolated_variants.add_argument('-g', '--germline-vcf',
-                                           help="Germline VCF.",
-                                           required=True)
+                                          help="Germline VCF.",
+                                          required=True)
     parser_isolated_variants.add_argument('-s', '--somatic-vcf',
-                                           help="Somatic VCF.",
-                                           required=True)
+                                          help="Somatic VCF.",
+                                          required=True)
     parser_isolated_variants.add_argument('-p', '--proximity',
-                                           help="Required clearance (in bp) around variants (default: 30).",
-                                           default=30)
-    #Allowing proximal silent (het/hom) and homozygous missense variants still needs to be implemented.
+                                          help="Required clearance (in bp) around variants (default: 30).",
+                                          default=30)
     parser_isolated_variants.add_argument('-a', '--allow-silent-and-homozygous',
-                                           help="Allow silent and homozygous germline variants near variants. (default: False)",
-                                           action="store_true")
+                                          help="Allow silent and homozygous germline variants near variants. (default: False)",
+                                          action="store_true")
     parser_isolated_variants.add_argument('-o', '--output',
                                           help="Output file.",
                                           required=True)
@@ -354,42 +353,43 @@ def get_args():
     parser_expressed_ervs = subparsers.add_parser('filter-expressed-ervs',
                                                    help="Filter expressed ERVs.")
     parser_expressed_ervs.add_argument('-q', '--quants',
-                                        help="Transcript abundance file (Salmon format).",
-                                        required=True)
+                                       help="Transcript abundance file (Salmon format).",
+                                       required=True)
     parser_expressed_ervs.add_argument('-m', '--metric',
-                                        help="Column for expression from abundance file. (default: TPM)",
-                                        default='TPM')
+                                       help="Column for expression from abundance file. (default: TPM)",
+                                       default='TPM')
     parser_expressed_ervs.add_argument('-r', '--exclude-zeros',
-                                        help="Exclude zeros for expression percentile.",
-                                        action='store_false')
+                                       help="Exclude zeros for expression percentile.",
+                                       action='store_false')
     parser_expressed_ervs.add_argument('-z', '--abundance-threshold',
-                                        help="Expression threshold for filtering. (default: 10)",
-                                        default=10)
+                                       help="Expression threshold for filtering. (default: 10)",
+                                       default=10)
     parser_expressed_ervs.add_argument('-t', '--trim-chr-prefix',
-                                          help="Trim the chr prefix from gEVE references.",
-                                          action='store_true')
+                                       help="Trim the chr prefix from gEVE references.",
+                                       action='store_true')
     parser_expressed_ervs.add_argument('-o', '--output',
-                                        help="Output file.",
-                                        required=True)
-    
+                                       help="Output file.",
+                                       required=True)
+   
+ 
     # Subparser for filtering expressed ERVs through RNA coverage.
     parser_erv_rna_cov = subparsers.add_parser('check-erv-rna-coverage',
                                                 help="Filter for ERVs with sufficient average coverage.")
-    parser_erv_rna_cov.add_argument('-c', '--cov-file',
-                                     help="Coverage file created by samtools cov.",
-                                     required=True)
+    parser_erv_rna_cov.add_argument('-c', '--coverage-file',
+                                    help="Coverage file created by samtools cov.",
+                                    required=True)
     parser_erv_rna_cov.add_argument('-e', '--expressed-hervs',
-                                     help="File containing list of expressed ERVs.",
-                                     default="TPM")
+                                    help="File containing list of expressed ERVs.",
+                                    default="TPM")
     parser_erv_rna_cov.add_argument('-m', '--mean-depth',
-                                     help="Required mean depth for ERV to be classified as expressed (default: 0).",
-                                     default=0)
-    parser_erv_rna_cov.add_argument('-p', '--cov',
-                                     help="Required cov for ERV to be classified as expressed (default: 0).",
-                                     default=0)
+                                    help="Required mean depth for ERV to be classified as expressed (default: 0).",
+                                    default=0)
+    parser_erv_rna_cov.add_argument('-p', '--coverage',
+                                    help="Required cov for ERV to be classified as expressed (default: 0).",
+                                    default=0)
     parser_erv_rna_cov.add_argument('-o', '--output',
-                                     help="Output file.",
-                                     required=True)
+                                    help="Output file.",
+                                    required=True)
    
  
     # Subparser for filtering expressed viruses through RNA coverage.
@@ -614,11 +614,11 @@ def get_args():
     # Subparser for making LENS report
     parser_mk_lens_report = subparsers.add_parser('make-lens-report')
     parser_mk_lens_report.add_argument('--metadata-dir', '-d',
-                                         help="Path to metadata directory.",
-                                         required=True)
+                                       help="Path to metadata directory.",
+                                       required=True)
     parser_mk_lens_report.add_argument('--output', '-o',
-                                         help="Output file.",
-                                         required=True)
+                                       help="Output file.",
+                                       required=True)
 
 
     # Subparser for making pan-patient antigen source barplot
@@ -650,36 +650,36 @@ def get_args():
     # Subparser for determining read count support for Viral, ERV, and self peptides.
     parser_get_pep_rd_cnt = subparsers.add_parser('get-peptide-read-count')
     parser_get_pep_rd_cnt.add_argument('--netmhcpan', '-n',
-                                      help="NetMHCpan file with peptides of interest.",
-                                      required=True)
+                                       help="NetMHCpan file with peptides of interest.",
+                                       required=True)
     parser_get_pep_rd_cnt.add_argument('--bam', '-b',
-                                      help="RNA-Sequencing BAM.",
-                                      required=True)
+                                       help="RNA-Sequencing BAM.",
+                                       required=True)
     parser_get_pep_rd_cnt.add_argument('--cds-fasta', '-c',
-                                      help="FASTA with peptide nucleotide coding sequence.",
-                                      required=True)
+                                       help="FASTA with peptide nucleotide coding sequence.",
+                                       required=True)
     parser_get_pep_rd_cnt.add_argument('--output', '-o',
-                                      help="Output file.",
-                                      required=True)
+                                       help="Output file.",
+                                       required=True)
    
  
     # Subparser for determining read count support for SNV-derived peptides.
     parser_get_snv_pep_rd_cnt = subparsers.add_parser('get-snv-peptide-read-count')
     parser_get_snv_pep_rd_cnt.add_argument('--netmhcpan', '-n',
-                                      help="NetMHCpan file with peptides of interest.",
-                                      required=True)
+                                           help="NetMHCpan file with peptides of interest.",
+                                           required=True)
     parser_get_snv_pep_rd_cnt.add_argument('--bam', '-b',
-                                      help="RNA-Sequencing BAM.",
-                                      required=True)
+                                           help="RNA-Sequencing BAM.",
+                                           required=True)
     parser_get_snv_pep_rd_cnt.add_argument('--nt-fasta', '-c',
-                                      help="FASTA file peptide nucleotide coding sequence.",
-                                      required=True)
+                                           help="FASTA file peptide nucleotide coding sequence.",
+                                           required=True)
     parser_get_snv_pep_rd_cnt.add_argument('--gtf', '-g',
-                                      help="GTF with gene annotations.",
-                                      required=True)
+                                           help="GTF with gene annotations.",
+                                           required=True)
     parser_get_snv_pep_rd_cnt.add_argument('--output', '-o',
-                                      help="Output file.",
-                                      required=True)
+                                           help="Output file.",
+                                           required=True)
    
  
     # Subparser for determining read count support for InDel peptides.
@@ -704,33 +704,33 @@ def get_args():
     # Subparser for determining read count support for fusion peptides.
     parser_get_fus_pep_rd_cnt = subparsers.add_parser('get-fusion-peptide-read-count')
     parser_get_fus_pep_rd_cnt.add_argument('--netmhcpan', '-n',
-                                      help="NetMHCpan file with peptides of interest.",
-                                      required=True)
+                                           help="NetMHCpan file with peptides of interest.",
+                                           required=True)
     parser_get_fus_pep_rd_cnt.add_argument('--fusions', '-f',
-                                      help="Fusions (STARFusion format)",
-                                      required=True)
+                                           help="Fusions (STARFusion format)",
+                                           required=True)
     parser_get_fus_pep_rd_cnt.add_argument('--nt-fasta', '-t',
-                                      help="FASTA file with peptide nucleotide coding sequences",
-                                      required=True)
+                                           help="FASTA file with peptide nucleotide coding sequences",
+                                           required=True)
     parser_get_fus_pep_rd_cnt.add_argument('--fusion-reads', '-r',
-                                      help="Junction or discordant reads supporting fusions",
-                                      required=True)
+                                           help="Junction or discordant reads supporting fusions",
+                                           required=True)
     parser_get_fus_pep_rd_cnt.add_argument('--output', '-o',
-                                      help="Output file.",
-                                      required=True)
+                                           help="Output file.",
+                                           required=True)
    
  
     # Subparser for determining read count support for splice peptides.
     parser_get_splc_pep_rd_cnt = subparsers.add_parser('get-splice-peptide-read-count')
     parser_get_splc_pep_rd_cnt.add_argument('--neosplice-summary', '-n',
-                                      help="NeoSplice summary file",
-                                      required=True)
+                                            help="NeoSplice summary file",
+                                            required=True)
     parser_get_splc_pep_rd_cnt.add_argument('--bam', '-b',
-                                      help="RNA-Sequencing BAM file",
-                                      required=True)
+                                            help="RNA-Sequencing BAM file",
+                                            required=True)
     parser_get_splc_pep_rd_cnt.add_argument('--output', '-o',
-                                      help="Output file.",
-                                      required=True)
+                                            help="Output file.",
+                                            required=True)
    
  
     # Subparser for filtering peptides that exist in wildtype sample
@@ -801,12 +801,32 @@ def load_tcga_dicts():
     return abbrev_to_tumor_type
 
 
+def load_vcf(input_vcf):
+    """
+    Uses VCF module to load VCF file.
+
+    Args:
+        input_vcf: Input VCF file.
+
+    Returns:
+        vcf_reader (vcf Reader object): loaded VCF.
+    """
+    vcf_reader = ''
+    if input_vcf.endswith('gz'):
+        vcf_reader = vcf.Reader(open(input_vcf), 'r', compressed=True)
+    else:
+        vcf_reader = vcf.Reader(open(input_vcf), 'r')
+    return vcf_reader
+
+
 def extract_missense_snvs(input_vcf):
     """
     Extracts missense SNVs from annotated somatic VCF file.
+    Assumes annotated VCF follows ANN standard:
+    http://pcingola.github.io/SnpEff/adds/VCFannotationformat_v1.0.pdf
 
     Args:
-        input_vcf: VCF annotated with snpEff.
+        input_vcf: Annotated VCF.
 
     Returns:
         missense_records (dict): keys are <chr>:<pos> and values are
@@ -814,11 +834,7 @@ def extract_missense_snvs(input_vcf):
     """
     missense_records = {}
 
-    vcf_reader = ''
-    if input_vcf.endswith('gz'):
-        vcf_reader = vcf.Reader(open(input_vcf), 'r', compressed=True)
-    else:
-        vcf_reader = vcf.Reader(open(input_vcf), 'r')
+    vcf_reader = load_vcf(input_vcf)
 
     for record in vcf_reader:
         annotations = [x for x in record.INFO['ANN']]
@@ -871,51 +887,21 @@ def extract_missense_snvs(input_vcf):
     
     return missense_records
 
-# Remove
-#def extract_potential_somatic_nuc_changes(args):
-#    """
-#    This will need to be cleaned heavily, but good for now.
-#    """
-#    filtered_records = []
-#    #vcf_reader = vcf.Reader(open(args.vcf), 'r', compressed=True)
-#    vcf_reader = vcf.Reader(open(args.vcf), 'r')
-#    for record in vcf_reader:
-#        print(record)
-#        possible_variants = [x for x in record.INFO['ANN']]
-#        for possible_variant in possible_variants:
-#            split_possible = possible_variant.split('|')
-#            if split_possible[1] == 'missense_variant' and split_possible[13] and split_possible[-1] == '':
-#                #transcript = split_possible[6].split('.')[0]
-#                transcript = split_possible[6]
-#                change = split_possible[9].lstrip('c.')
-#                print(change)
-#                pos= re.split('(\d+)', change)[1]
-#                change = re.split('(\d+)', change)[2].split('>')
-#                print(change)
-#                pre = change[0]
-#                post = change[1]
-#                chr_pos = record
-#                print("{} {} {} {}".format(transcript, change, pre,post, pos))
-#                pos_total = split_possible[12]
-#                codon_pos = int((int(split_possible[13].split('/')[0])*3) - 2)
-#                snapshot = pos_total.split('/')[0]
-#                tlen = pos_total.split('/')[1]
-#                if pos != snapshot:
-#                    sys.exit(1)
-#                filtered_records.append([transcript, pos, tlen, pre, post, codon_pos, chr_pos])
-#
-#    return filtered_records
 
 def extract_conservative_inframe_indels(input_vcf):
     """
-    Focusing on deletions now, need to find a good example of a conservative_inframe_insertion
+    Extracts conservative inframe InDels from annotated somatic VCF file.
+
+    Args:
+        input_vcf: Annotated VCF.
+
+    Returns:
+        conserv_inframe_indels(dict): keys are <chr>:<pos> and values are
+                                      dictionaries with variant metadata.
     """
     conserv_inframe_indels = {}
-    vcf_reader = ''
-    if input_vcf.endswith('gz'):
-        vcf_reader = vcf.Reader(open(input_vcf), 'r', compressed=True)
-    else:
-        vcf_reader = vcf.Reader(open(input_vcf), 'r')
+
+    vcf_reader = load_vcf(input_vcf)
 
     for record in vcf_reader:
         annotations = [x for x in record.INFO['ANN']]
@@ -950,13 +936,19 @@ def extract_conservative_inframe_indels(input_vcf):
 
 def extract_disruptive_inframe_indels(input_vcf):
     """
+    Extracts disruptive inframe InDels from annotated somatic VCF file.
+
+    Args:
+        input_vcf: Annotated VCF.
+
+    Returns:
+        disrupt_inframe_indels(dict): keys are <chr>:<pos> and values are
+                                      dictionaries with variant metadata.
     Focusing on deletions now, need to find a good example of a conservative_inframe_insertion
     """
     disrupt_inframe_indels = {}
-    if input_vcf.endswith('gz'):
-        vcf_reader = vcf.Reader(open(input_vcf), 'r', compressed=True)
-    else:
-        vcf_reader = vcf.Reader(open(input_vcf), 'r')
+
+    vcf_reader = load_vcf(input_vcf)
 
     for record in vcf_reader:
         annotations = [x for x in record.INFO['ANN']]
@@ -987,6 +979,7 @@ def extract_disruptive_inframe_indels(input_vcf):
     for k in ks_to_del:
         del(disrupt_inframe_indels[k])
     return disrupt_inframe_indels
+
 
 def extract_frameshift_indels(input_vcf):
     """
@@ -1046,8 +1039,6 @@ def make_snv_peptides_context(args):
             somatic_txs.append(line.strip())
     print("Loaded transcripts harboring somatic variants.")
 
-#    print("Somatic transcripts (harboring somatic vars): {}".format(somatic_txs))
-
     print("Loading variant transcripts metadata...")
     variant_txs_metadata = {} 
    
@@ -1067,8 +1058,9 @@ def make_snv_peptides_context(args):
             tx_id_idx = ''
             meta_entries = line.split('\t')[8].split('; ')
             for meta_entry_idx, meta_entry in enumerate(meta_entries):
-                if re.search('transcript_id', meta_entry):
+                if re.search('transcript_id ', meta_entry):
                     tx_id_idx = meta_entry_idx
+                    break
             variant_tx = line.split('\t')[8].split('; ')[meta_entry_idx].replace('"', '').replace('transcript_id ', '')
             chr = line.split('\t')[0]
             start = line.split('\t')[3]
@@ -1085,7 +1077,8 @@ def make_snv_peptides_context(args):
 
     for entry in missense_snvs.keys():
         for record in missense_snvs[entry]:
-            variant_tx = record['transcript'].partition('.')[0]
+#            variant_tx = record['transcript'].partition('.')[0]
+            variant_tx = record['transcript']
             if variant_tx not in somatic_txs:
                 continue
             norm_nts = []
@@ -1101,12 +1094,15 @@ def make_snv_peptides_context(args):
             exon_seqs['norm'] = {}
             exon_seqs['tumor'] = {}
             print("Loading normal exonic sequences...")
-            if glob(os.path.join(args.var_tx_seqs, '*{}_{}.normal.fa'.format(record['transcript'].partition('.')[0], record_coords))) and glob(os.path.join(args.var_tx_seqs, '*{}_{}.tumor.fa'.format(record['transcript'].partition('.')[0], record_coords))): 
-                for seq_record in SeqIO.parse(glob(os.path.join(args.var_tx_seqs, '*{}_{}.normal.fa'.format(record['transcript'].partition('.')[0], record_coords)))[0], "fasta"):
+#            if glob(os.path.join(args.var_tx_seqs, '*{}_{}.normal.fa'.format(record['transcript'].partition('.')[0], record_coords))) and glob(os.path.join(args.var_tx_seqs, '*{}_{}.tumor.fa'.format(record['transcript'].partition('.')[0], record_coords))): 
+            if glob(os.path.join(args.var_tx_seqs, '*{}_{}.normal.fa'.format(record['transcript'], record_coords))) and glob(os.path.join(args.var_tx_seqs, '*{}_{}.tumor.fa'.format(record['transcript'], record_coords))): 
+#                for seq_record in SeqIO.parse(glob(os.path.join(args.var_tx_seqs, '*{}_{}.normal.fa'.format(record['transcript'].partition('.')[0], record_coords)))[0], "fasta"):
+                for seq_record in SeqIO.parse(glob(os.path.join(args.var_tx_seqs, '*{}_{}.normal.fa'.format(record['transcript'], record_coords)))[0], "fasta"):
                     exon_seqs['norm'][seq_record.description] = seq_record.seq
                 print("Loaded normal exonic sequences.")
                 print("Loading tumor exonic sequences...")
-                for seq_record in SeqIO.parse(glob(os.path.join(args.var_tx_seqs, '*{}_{}.tumor.fa'.format(record['transcript'].partition('.')[0], record_coords)))[0], "fasta"):
+#                for seq_record in SeqIO.parse(glob(os.path.join(args.var_tx_seqs, '*{}_{}.tumor.fa'.format(record['transcript'].partition('.')[0], record_coords)))[0], "fasta"):
+                for seq_record in SeqIO.parse(glob(os.path.join(args.var_tx_seqs, '*{}_{}.tumor.fa'.format(record['transcript'], record_coords)))[0], "fasta"):
                     exon_seqs['tumor'][seq_record.description] = seq_record.seq
                 print("Loaded tumor exonic sequences.")
             else:
@@ -1405,8 +1401,8 @@ def make_indel_peptides_context(args):
             for meta_entry_idx, meta_entry in enumerate(meta_entries):
                 if re.search('transcript_id', meta_entry):
                     tx_id_idx = meta_entry_idx
+                    break
             variant_tx = line.split('\t')[8].split('; ')[meta_entry_idx].replace('"', '').replace('transcript_id ', '')
-            variant_tx = line.split('\t')[8].split('; ')[2].replace('"', '').replace('transcript_id ', '')
             chr = line.split('\t')[0]
             start = line.split('\t')[3]
             stop = line.split('\t')[4]
@@ -1435,7 +1431,8 @@ def make_indel_peptides_context(args):
     tumor_aas = []
     for entry in inframe_indels.keys():
         for record in inframe_indels[entry]:
-            variant_tx = record['transcript'].partition('.')[0]
+#            variant_tx = record['transcript'].partition('.')[0]
+            variant_tx = record['transcript']
             if variant_tx not in somatic_txs:
                 continue
             print("NEW INFRAME RECORD: {}".format(record))
@@ -2574,7 +2571,8 @@ def get_expressed_txs(args, threshold):
                 count = np.log2(float(line[count_column]) + 1)
 #                print("{} {}".format(count, threshold))
                 if float(count) > float(threshold):
-                    expressed_txids.append(line[txid_column].split('.')[0])
+#                    expressed_txids.append(line[txid_column].split('.')[0])
+                    expressed_txids.append(line[txid_column])
     return expressed_txids
 
 
@@ -2593,7 +2591,8 @@ def filter_vcf_by_expression(args, expressed_txids):
         annotations = [x for x in record.INFO['ANN']]
         for annotation in annotations:
             effects = annotation.split('|')
-            transcript = effects[6].partition('.')[0]
+#            transcript = effects[6].partition('.')[0]
+            transcript = effects[6]
             #print("Transcript: {}".format(transcript))
             if transcript in expressed_txids and record not in filtered_records:
                 filtered_records.append(record)
@@ -2624,14 +2623,16 @@ def write_isolated_vcf(args, filtered_records):
     for filtered_record in filtered_records:
         vcf_writer.write_record(filtered_record)
 
-def write_crowded_vcf(args, filtered_records):
-    """
-    refactor
-    """
-    vcf_reader = vcf.Reader(filename=args.somatic_vcf, compressed=True)
-    vcf_writer = vcf.Writer(open(args.crowded_vars_output, 'w'), vcf_reader)
-    for filtered_record in filtered_records:
-        vcf_writer.write_record(filtered_record)
+
+#Remove
+#def write_crowded_vcf(args, filtered_records):
+#    """
+#    refactor
+#    """
+#    vcf_reader = vcf.Reader(filename=args.somatic_vcf, compressed=True)
+#    vcf_writer = vcf.Writer(open(args.crowded_vars_output, 'w'), vcf_reader)
+#    for filtered_record in filtered_records:
+#        vcf_writer.write_record(filtered_record)
 
 
 def isolated_variants(args):
@@ -2650,7 +2651,6 @@ def isolated_variants(args):
             crowded_cand_vars.append(record)
     print("# of isolated candidate variants: {}".format(len(isolated_cand_vars)))
     write_isolated_vcf(args, isolated_cand_vars)
-#    write_crowded_vcf(args, crowded_cand_vars)
 
 
 def get_candidate_variants(args):
@@ -2805,12 +2805,6 @@ def filter_mutant_peptides(args):
     
               
 
-def create_lens_report(args):
-    """
-    """
-    pass
-
-
 def add_snv_metadata(args):
     """
     """
@@ -2868,6 +2862,12 @@ def add_snv_metadata(args):
                 var_to_ccf[var] = ccf
 
     header = []
+    header_extension = ['gene_name', 'transcript_identifier',
+                        'variant_position', 'reference_allele',
+                        'alternate_allele', 'tpm', 'log2(tpm+1)',
+                        'uq(log2(tpm+1))', 'cancer_cell_fraction',
+                        'protein_context', 'nucleotide_context',
+                        'variant_type']
 
     new_lines = []
     with open(args.binding_affinities) as fo:
@@ -2881,10 +2881,8 @@ def add_snv_metadata(args):
                     pass
                 print(header)
                 header.insert(0, 'antigen_source')
-#                header.extend(['gene_name', 'transcript_identifier', 'variant_position', 'reference_allele', 'alternate_allele', 'tpm', 'log2(tpm+1)', 'uq(log2(tpm+1))', 'cancer_cell_fraction', 'protein_context', 'nucleotide_context', 'variant_type', 'rna_read_count', 'percent_variant_rna_reads'])
-                header.extend(['gene_name', 'transcript_identifier', 'variant_position', 'reference_allele', 'alternate_allele', 'tpm', 'log2(tpm+1)', 'uq(log2(tpm+1))', 'cancer_cell_fraction', 'protein_context', 'nucleotide_context', 'variant_type'])
+                header.extend(header_extension)
                 header = header[:5] + header[11:]
-                print(header)
                 header[1] = 'pos'                                                                   
                 header[2] = 'mhc_allele'                                                            
                 header[3] = 'peptide'                                                               
@@ -2942,6 +2940,7 @@ def add_snv_metadata(args):
         for new_line in new_lines:
             ofo.write("{}\n".format('\t'.join(new_line)))
 
+
 def add_indel_metadata(args):
     """
     """
@@ -2953,7 +2952,6 @@ def add_indel_metadata(args):
                 bufr_dict = {i.split(':')[0]: i.split(':')[1] for i in line.split(' ')[1:]}
                 line = line.split(' ')
                 checksum = "MD5_{}".format(line[0].lstrip('>').split(':')[1][:-5])
-#                checksum = line[0].lstrip('>')[:-1]
                 checksum_to_meta_map[checksum] = bufr_dict
 
     tx_to_tpm = {}
@@ -2999,6 +2997,12 @@ def add_indel_metadata(args):
                 var_to_ccf[var] = ccf
 
     header = []
+    header_extension = ['gene_name', 'transcript_identifier',
+                        'variant_position', 'reference_allele',
+                        'alternate_allele', 'tpm', 'log2(tpm+1)',
+                        'uq(log2(tpm+1))', 'cancer_cell_fraction',
+                        'protein_context', 'nucleotide_context',
+                        'variant_type']
 
     new_lines = []
     with open(args.binding_affinities) as mno:
@@ -3015,7 +3019,7 @@ def add_indel_metadata(args):
                     header.remove('BindLevel')
                 except:
                     pass
-                header.extend(['gene_name', 'transcript_identifier', 'variant_position', 'reference_allele', 'alternate_allele', 'tpm', 'log2(tpm+1)', 'uq(log2(tpm+1))', 'cancer_cell_fraction', 'protein_context', 'nucleotide_context', 'variant_type'])
+                header.extend(header_extension)
                 header = header[:5] + header[11:]
                 header[1] = 'pos'                                                                   
                 header[2] = 'mhc_allele'                                                            
@@ -4955,14 +4959,22 @@ def add_fusion_metadata(args):
 #                fusion_metadata[line[0][:15]]['nuc_context'] = nuc_context
 #                fusion_metadata[line[0][:15]]['protein_context'] = protein_context
 
-    print(fusion_metadata)
 
     metadata = ['JunctionReadCount', 'SpanningFragCount', 'SpliceType', 'LeftGene',
                 'LeftBreakpoint', 'LeftBreakDinuc', 'LeftBreakEntropy', 'RightGene', 
                  'RightBreakpoint', 'RightBreakDinuc', 'RightBreakEntropy',
                  'LargeAnchorSupport', 'FFPM', 'PROT_FUSION_TYPE', 'annots']
 
-    header_extension = ['fusion_junction_read_count', 'fusion_spanning_frag_count', 'fusion_splice_type', 'fusion_left_gene', 'fusion_left_breakpoint', 'fusion_left_break_dinuc', 'fusion_left_break_entropy', 'fusion_right_gene', 'fusion_right_breakpoint', 'fusion_right_break_dinuc', 'fusion_right_break_entropy', 'fusion_large_anchor_supprot', 'ffpm', 'fusion_type', 'fusion_annotations', 'nucleotide_context', 'protein_context']
+    header_extension = ['fusion_junction_read_count',
+                        'fusion_spanning_frag_count', 'fusion_splice_type',
+                        'fusion_left_gene', 'fusion_left_breakpoint',
+                        'fusion_left_break_dinuc', 'fusion_left_break_entropy',
+                        'fusion_right_gene', 'fusion_right_breakpoint',
+                        'fusion_right_break_dinuc',
+                        'fusion_right_break_entropy',
+                        'fusion_large_anchor_supprot', 'ffpm', 'fusion_type',
+                        'fusion_annotations', 'nucleotide_context',
+                        'protein_context']
 
 
     output_lines = []
@@ -5362,7 +5374,7 @@ def load_tcga_tx_summ(tumor_type, summ_file):
     return tumor_spec_metrics
 
 
-def check_herv_rna_coverage(args):
+def check_erv_rna_coverage(args):
     """
     """
     rna_covered_hervs = []
@@ -5919,7 +5931,7 @@ def get_fusion_peptide_read_count(args):
             reads_and_seqs[new_id].append(str(seq_record.seq))
 
     fusion_reads = {}
-    with open(args.fusion_calls) as fo:
+    with open(args.fusions) as fo:
         for line_idx, line in enumerate(fo.readlines()):
             if line_idx > 0:
                 line = line.split()
@@ -6175,8 +6187,8 @@ def main():
         make_antigens_barplot(args)
     if args.command == 'add-tcga-data':
         add_tcga_data(args)
-    if args.command == 'check-herv-rna-coverage':
-        check_herv_rna_coverage(args)
+    if args.command == 'check-erv-rna-coverage':
+        check_erv_rna_coverage(args)
     if args.command == 'check-virus-rna-coverage':
         check_virus_rna_coverage(args)
     if args.command == 'get-peptide-read-count':
