@@ -185,6 +185,15 @@ def get_args():
     parser_add_snv_metadata.add_argument('-b', '--binding-affinities',
                                          help="Binding affinities file (NetMHCpan-4.1b format).",
                                          required=True)
+    parser_add_snv_metadata.add_argument('-s', '--binding-stabilities',
+                                         help="Binding stabilities file (netMHCstabpan format).",
+                                         required=True)
+    parser_add_snv_metadata.add_argument('-f', '--ag-foreignness',
+                                         help="Foreignness file (antigen.garnish format).",
+                                         required=True)
+    parser_add_snv_metadata.add_argument('-d', '--ag-dissimilarity',
+                                         help="Dissimilarity file (antigen.garnish format).",
+                                         required=True)
     parser_add_snv_metadata.add_argument('-o', '--output',
                                          help="Output SNV report.",
                                          required=True)
@@ -207,6 +216,15 @@ def get_args():
                                            required=True)
     parser_add_indel_metadata.add_argument('-b', '--binding-affinities',
                                            help="Binding affinities file (netMHCpan format).",
+                                           required=True)
+    parser_add_indel_metadata.add_argument('-s', '--binding-stabilities',
+                                           help="Binding stabilities file (netMHCstabpan format).",
+                                           required=True)
+    parser_add_indel_metadata.add_argument('-f', '--ag-foreignness',
+                                           help="Foreignness file (antigen.garnish format).",
+                                           required=True)
+    parser_add_indel_metadata.add_argument('-d', '--ag-dissimilarity',
+                                           help="Dissimilarity file (antigen.garnish format).",
                                            required=True)
     parser_add_indel_metadata.add_argument('-o', '--output',
                                            help="Output InDel report.",
@@ -235,6 +253,15 @@ def get_args():
     parser_add_erv_metadata.add_argument('-d', '--geve-data',
                                          help="External gEVE data.",
                                          required=True)
+    parser_add_erv_metadata.add_argument('-s', '--binding-stabilities',
+                                         help="Binding stabilities file (netMHCstabpan format).",
+                                         required=True)
+    parser_add_erv_metadata.add_argument('-f', '--ag-foreignness',
+                                         help="Foreignness file (antigen.garnish format).",
+                                         required=True)
+    parser_add_erv_metadata.add_argument('-i', '--ag-dissimilarity',
+                                         help="Dissimilarity file (antigen.garnish format).",
+                                         required=True)
     parser_add_erv_metadata.add_argument('-t', '--trim-chr-prefix',
                                          help="Trim the chr prefix from gEVE references.",
                                          action='store_true')
@@ -254,6 +281,15 @@ def get_args():
                                            required=True)
     parser_add_viral_metadata.add_argument('-p', '--viral-pep-ref',
                                            help="Viral peptide reference FASTA (used for VirDetect).",
+                                           required=True)
+    parser_add_viral_metadata.add_argument('-s', '--binding-stabilities',
+                                           help="Binding stabilities file (netMHCstabpan format).",
+                                           required=True)
+    parser_add_viral_metadata.add_argument('-f', '--ag-foreignness',
+                                           help="Foreignness file (antigen.garnish format).",
+                                           required=True)
+    parser_add_viral_metadata.add_argument('-d', '--ag-dissimilarity',
+                                           help="Dissimilarity file (antigen.garnish format).",
                                            required=True)
     parser_add_viral_metadata.add_argument('-o', '--output',
                                            help="Output viral report.",
@@ -278,6 +314,15 @@ def get_args():
     parser_add_self_metadata.add_argument('-l', '--gene-list',
                                           help="File with CTA/self-antigen gene list.",
                                           required=True)
+    parser_add_self_metadata.add_argument('-s', '--binding-stabilities',
+                                         help="Binding stabilities file (netMHCstabpan format).",
+                                         required=True)
+    parser_add_self_metadata.add_argument('-r', '--ag-foreignness',
+                                         help="Foreignness file (antigen.garnish format).",
+                                         required=True)
+    parser_add_self_metadata.add_argument('-d', '--ag-dissimilarity',
+                                         help="Dissimilarity file (antigen.garnish format).",
+                                         required=True)
     parser_add_self_metadata.add_argument('-o', '--output',
                                           help="Output CTA/self-antigen report.",
                                           required=True)
@@ -606,6 +651,12 @@ def get_args():
     parser_add_splice_meta.add_argument('-s', '--splice-summary',
                                         help="Splice summary file from NeoSplice.",
                                         required=True)
+    parser_add_splice_meta.add_argument('-f', '--ag-foreignness',
+                                            help="Foreignness file (antigen.garnish format).",
+                                            required=True)
+    parser_add_splice_meta.add_argument('-d', '--ag-dissimilarity',
+                                             help="Dissimilarity file (antigen.garnish format).",
+                                             required=True)
     parser_add_splice_meta.add_argument('-o', '--output',
                                         help="Output file.",
                                         required=True)
@@ -1022,6 +1073,11 @@ def extract_frameshift_indels(input_vcf):
 
 def make_snv_peptides_context(args):
     """
+    Creates tumor and normal sequences from missense SNVs
+
+    - Extract somatic missense SNVS from annotated VCF
+    - Load transcripts harboring missense SNVs and gather metadata from GTF
+
     """
     mutant_peptides = {}
     mutant_seqs = {}
@@ -1052,9 +1108,6 @@ def make_snv_peptides_context(args):
             print(line.split('\t'))
             print(line.split('\t')[8].split('; '))
             print(line.split('\t')[8].split('; ')[2].replace('"', '').replace('transcript_id ', ''))
-#            for variant_tx in somatic_txs:
-#                if re.search(variant_tx, line):
-#                    if re.search('\tCDS\t', line):
             tx_id_idx = ''
             meta_entries = line.split('\t')[8].split('; ')
             for meta_entry_idx, meta_entry in enumerate(meta_entries):
@@ -1072,12 +1125,9 @@ def make_snv_peptides_context(args):
                 variant_txs_metadata[variant_tx]['cds'].append("{}:{}-{}".format(chr, start, stop))
     print("Loaded variant transcripts metadata.")
 
-#    expressed_txs_nts = {}
-#    expressed_txs_aas = {}
 
     for entry in missense_snvs.keys():
         for record in missense_snvs[entry]:
-#            variant_tx = record['transcript'].partition('.')[0]
             variant_tx = record['transcript']
             if variant_tx not in somatic_txs:
                 continue
@@ -1094,14 +1144,11 @@ def make_snv_peptides_context(args):
             exon_seqs['norm'] = {}
             exon_seqs['tumor'] = {}
             print("Loading normal exonic sequences...")
-#            if glob(os.path.join(args.var_tx_seqs, '*{}_{}.normal.fa'.format(record['transcript'].partition('.')[0], record_coords))) and glob(os.path.join(args.var_tx_seqs, '*{}_{}.tumor.fa'.format(record['transcript'].partition('.')[0], record_coords))): 
             if glob(os.path.join(args.var_tx_seqs, '*{}_{}.normal.fa'.format(record['transcript'], record_coords))) and glob(os.path.join(args.var_tx_seqs, '*{}_{}.tumor.fa'.format(record['transcript'], record_coords))): 
-#                for seq_record in SeqIO.parse(glob(os.path.join(args.var_tx_seqs, '*{}_{}.normal.fa'.format(record['transcript'].partition('.')[0], record_coords)))[0], "fasta"):
                 for seq_record in SeqIO.parse(glob(os.path.join(args.var_tx_seqs, '*{}_{}.normal.fa'.format(record['transcript'], record_coords)))[0], "fasta"):
                     exon_seqs['norm'][seq_record.description] = seq_record.seq
                 print("Loaded normal exonic sequences.")
                 print("Loading tumor exonic sequences...")
-#                for seq_record in SeqIO.parse(glob(os.path.join(args.var_tx_seqs, '*{}_{}.tumor.fa'.format(record['transcript'].partition('.')[0], record_coords)))[0], "fasta"):
                 for seq_record in SeqIO.parse(glob(os.path.join(args.var_tx_seqs, '*{}_{}.tumor.fa'.format(record['transcript'], record_coords)))[0], "fasta"):
                     exon_seqs['tumor'][seq_record.description] = seq_record.seq
                 print("Loaded tumor exonic sequences.")
@@ -1166,7 +1213,6 @@ def make_snv_peptides_context(args):
                 to_add_right = 0
                 while not suff_aa_len:
                     target_seq = list(seq[max(0, pos_idx-30+upstream_offset-to_add_left):min(pos_idx+31 + downstream_offset + to_add_right, len(seq))])
-                    print(''.join(target_seq))
                     reduced_target_seq = str(target_seq).replace('X', '')
                                    
                     if len(reduced_target_seq) > 63:
@@ -1233,125 +1279,6 @@ def make_snv_peptides_context(args):
             ofo.write('>{}\n{}\n'.format(k, v))
 
 
-# Remove
-#def make_snv_peptides(args):
-#    """
-#    Make peptide sequences derived from mutant (somatic) and normal (germline) sequences.
-#    """
-#    tx_to_aa = load_tx_aas(args)
-#    tx_to_cds = load_tx_cds(args)
-#
-#
-#    mutant_peptides = {}
-#    reference_peptides = {}
-#
-#    for entry in missense_snvs.keys():
-#        record = missense_snvs[entry]
-#        print(record)
-#        tx = record['transcript']
-#        tx_no_version = tx.split('.')[0]
-#        if tx not in tx_to_aa.keys() and tx_no_version not in tx_to_aa.keys():
-#            print("{} cannot be found in the transcript-to-amino acid dictionary. Continuing to next record...".format(record['transcript']))
-#            continue
-#        if tx not in tx_to_cds.keys() and tx_no_version not in tx_to_cds.keys():
-#            print("{} cannot be found in the transcript-to-coding sequence dictionary. Continuing to next record...".format(record['transcript']))
-#            continue
-#
-#        try:
-#            bufr_aa = list(tx_to_aa[tx])
-#        except:
-#            bufr_aa = list(tx_to_aa[tx_no_version])
-#        try:
-#            bufr_nt = list(tx_to_cds[tx])
-#        except:
-#            bufr_nt = list(tx_to_cds[tx_no_version])
-#
-#        if len(bufr_aa) != int(record['aa_len']):
-#            print("transcript {} shows different lengths between amino acid fasta ({}) and snpEff annotations! ({})".format(tx, record['aa_len'], len(bufr_aa)))
-#        if len(bufr_nt) != int(record['nt_len']):
-#            print("transcript {} shows different lengths between coding sequence fasta ({}) and snpEff annotations! ({})".format(tx, record['nt_len'], len(bufr_nt)))
-#
-#        # Deep copy to mut_aa...
-#        # This is the step where the annotated germline reference should be
-#        # utilized...
-#        mut_aa = bufr_aa[:]
-#        mut_nt = bufr_nt[:]
-#        aa_pos = int(record['aa_pos']) - 1
-#        nt_pos = int(record['nt_pos']) - 1
-#        # This check should be performed prior to incorporating germline variants.
-#
-#        if bufr_aa[aa_pos] != record['ref_aa']:
-#            print("Reference amino acid from snpEff annotation ({}) doesn't match amino acid from amino acid FASTA ({})! Continuing to next record...".format(record['ref_aa'], bufr_aa[aa_pos]))
-#            continue
-#        if bufr_nt[nt_pos] != record['ref_nt']:
-#            print("Reference nucleotide from snpEff annotation ({}) doesn't match nucleotide from amino acid FASTA ({})! Continuing to next record...".format(record['ref_nt'], bufr_nt[nt_pos]))
-#            continue
-#
-#        # Applying the mutated amino acid
-#        mut_aa[aa_pos] = record['alt_aa']
-#        mut_nt[nt_pos] = record['alt_nt']
-#
-#        ref_peptide = ''.join(bufr_aa[max(aa_pos-args.length+1,0):min(aa_pos+args.length, len(bufr_aa))])
-#        mut_peptide = ''.join(mut_aa[max(aa_pos-args.length+1, 0):min(aa_pos+args.length, len(mut_aa))])
-#
-#        print("Reference peptide: {}".format(ref_peptide))
-#        print("Mutant peptide:    {}".format(mut_peptide))
-#
-#        codon_pos = record['codon_pos'] - 1
-#        ref_nuc = ''.join(bufr_nt[max(codon_pos-args.context_nt_length, 0):min(codon_pos+args.context_nt_length, len(bufr_nt)) + 3])
-#        mut_nuc = ''.join(mut_nt[max(codon_pos-args.context_nt_length, 0):min(codon_pos+args.context_nt_length, len(mut_nt)) + 3])
-#
-#        print("Reference genomic context: {}".format(ref_nuc))
-#        print("Mutant genomic context:    {}".format(mut_nuc))
-#
-#        header_mut_peptide = ''.join(mut_aa[max(aa_pos-13, 0):min(aa_pos+14, len(mut_aa))])
-#
-#        #var_md5 is being used to create a unique identifier for the resulting mutant peptide to overcome netMHCpan's length limitations.
-#        var_md5 = hashlib.md5("{}".format(':'.join([str(record['meta'].CHROM), str(record['meta'].POS), str(tx), str(record['meta'].REF), str(record['meta'].ALT)])).encode('utf-8')).hexdigest()[:16]
-#        mutant_peptides["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{} SNV_TYPE:{} PROTEIN_CONTEXT:{} GENOMIC_CONTEXT:{}".format(var_md5, record['meta'].CHROM, record['meta'].POS, tx, record['meta'].REF, record['meta'].ALT, 'missense', header_mut_peptide, mut_nuc)] = mut_peptide
-#        reference_peptides["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{}".format(var_md5, record['meta'].CHROM, record['meta'].POS, tx, record['meta'].REF, record['meta'].ALT)] = ref_peptide
-#
-#    with open(args.mt_output, 'w') as ofo:
-#        for k, v in mutant_peptides.items():
-#            ofo.write('>{}\n{}\n'.format(k, v))
-#    with open(args.wt_output, 'w') as ofo:
-#        for k, v in reference_peptides.items():
-#            ofo.write('>{}\n{}\n'.format(k, v))
-
-
-# Remove
-#def get_snv_genomic_context(args):
-#    """
-#    """
-#    tx_to_cds = load_tx_cds(args)
-#    missense_snvs = extract_missense_snvs(args.vcf)
-#    emitted_nucs = {}
-#    for record in missense_snvs:
-#        if record[0] not in tx_to_cds.keys():
-#            continue
-#        tx_ref_seq = list(tx_to_cds[record[0]])
-##        if len(tx_ref_seq) != int(record[2]):
-##            print("transcript {} shows different lengths between peptide fasta ({}) and snpeff! ({})".format(record[0], record[2], len(tx_ref_seq)))
-#
-#        mut_seq = tx_ref_seq[:]
-#        pos = int(record[1]) - 1
-##        if mut_seq[pos] != record[3]:
-##            print("Reference amino acid doesn't match! Something has gone horribly wrong.")
-##            continue
-#        # Have to be careful here... we want to start at the first base of the affected codon
-#        mut_seq[pos] = record[4]
-#        codon_pos = record[5] - 1
-#        ref_nuc = ''.join(tx_ref_seq[max(codon_pos-args.length-1, 0):min(codon_pos+args.length, len(tx_ref_seq)) + 3])
-#        mut_nuc = ''.join(mut_seq[max(codon_pos-args.length, 0):min(codon_pos+args.length, len(mut_seq)) + 3])
-#        print("{}\n{}\n{}".format(record[0],ref_nuc, mut_nuc))
-#        print(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)]))
-#        var_md5 = hashlib.md5("{}".format(':'.join([str(record[-1].CHROM), str(record[-1].POS), str(record[0]), str(record[-1].REF), str(record[-1].ALT)])).encode('utf-8')).hexdigest()[:16]
-#        emitted_nucs["{}\t{}:{}\t{}\t{}\t{}".format(var_md5, record[-1].CHROM, record[-1].POS, record[0], record[-1].REF, record[-1].ALT)] = mut_nuc
-#
-#    with open(args.output, 'w') as ofo:
-#        for k, v in emitted_nucs.items():
-#            ofo.write('>{}\t{}\n'.format(k, v))
-
 def make_indel_peptides_context(args):
     """
     """
@@ -1394,9 +1321,6 @@ def make_indel_peptides_context(args):
             print(line.split('\t'))
             print(line.split('\t')[8].split('; '))
             print(line.split('\t')[8].split('; ')[2].replace('"', '').replace('transcript_id ', ''))
-#            for variant_tx in somatic_txs:
-#                if re.search(variant_tx, line):
-#                    if re.search('\tCDS\t', line):
             meta_entries = line.split('\t')[8].split('; ')
             for meta_entry_idx, meta_entry in enumerate(meta_entries):
                 if re.search('transcript_id', meta_entry):
@@ -1412,26 +1336,12 @@ def make_indel_peptides_context(args):
             if coords not in variant_txs_metadata[variant_tx]['cds']:
                 variant_txs_metadata[variant_tx]['cds'].append("{}:{}-{}".format(chr, start, stop))
     print("Loaded variant transcripts metadata.")
-#    with open(args.gtf) as fo:
-#        for line in fo.readlines():
-#            for expressed_tx in somatic_txs:
-#                if re.search(expressed_tx, line):
-#                    if re.search('\tCDS\t', line):
-#                        chr = line.split('\t')[0]
-#                        start = line.split('\t')[3]
-#                        stop = line.split('\t')[4]
-#                        strand = line.split('\t')[6] 
-#                        variant_txs_metadata[expressed_tx]['strand'] = strand
-#                        coords = "{}:{}-{}".format(chr, start, stop)
-#                        if coords not in variant_txs_metadata[expressed_tx]['cds']:
-#                            variant_txs_metadata[expressed_tx]['cds'].append("{}:{}-{}".format(chr, start, stop))
 
     expressed_txs_nts = {}
 
     tumor_aas = []
     for entry in inframe_indels.keys():
         for record in inframe_indels[entry]:
-#            variant_tx = record['transcript'].partition('.')[0]
             variant_tx = record['transcript']
             if variant_tx not in somatic_txs:
                 continue
@@ -1441,10 +1351,10 @@ def make_indel_peptides_context(args):
             print(variant_tx)
             strands = ['tumor']
             
-            print(glob(os.path.join(args.var_tx_seqs, '*{}_{}.tumor.fa'.format(record['transcript'].partition('.')[0], record_coords))))
+            print(glob(os.path.join(args.var_tx_seqs, '*{}_{}.tumor.fa'.format(record['transcript'], record_coords))))
             exon_seqs = {}
             exon_seqs['tumor'] = {}
-            for seq_record in SeqIO.parse(glob(os.path.join(args.var_tx_seqs, '*{}_{}.tumor.fa'.format(record['transcript'].partition('.')[0], record_coords)))[0], "fasta"):
+            for seq_record in SeqIO.parse(glob(os.path.join(args.var_tx_seqs, '*{}_{}.tumor.fa'.format(record['transcript'], record_coords)))[0], "fasta"):
                 exon_seqs['tumor'][seq_record.description] = seq_record.seq
             
             variant_tx_seqs = {}
@@ -1490,19 +1400,6 @@ def make_indel_peptides_context(args):
                 indel_stop = int(ins_rec_nt.split('_')[1]) - 1
                 indel_len = int(indel_stop) - int(indel_start) + 2
 
-#            # INSERTIONS/DELETIONS #
-#            elif re.search("delins", record['aa3_change']):
-#                print("INFRAME INSERTION/DELETION: {}:{}".format(record['meta'].CHROM, record['meta'].POS))
-#              
-#                pass
-#                del_rec_aa, bufr, ins_aa3 = record['aa3_change'].partition('delins')
-#    
-#                ins_aa = seq1(ins_aa3)
-#                start_pos_aa = int(del_rec_aa.split('_')[0][3:]) - 1
-#                start_aa3 = del_rec_aa.split('_')[0][:3]
-#                start_aa = seq1(start_aa3)
-#                stop_pos_aa = 0
-#                stop_aa = 'foo'
 
             # DUPLICATIONS #
             elif re.search("dup", record['nt_change']):
@@ -1515,15 +1412,7 @@ def make_indel_peptides_context(args):
                     indel_start = dup_rec_nt
                     indel_stop = dup_rec_nt
                     indel_len = 1
-#                indel_start = int(dup_rec_nt.split('_')[0]) - 1
-#                indel_stop = int(dup_rec_nt.split('_')[1]) - 1
-#                indel_len = int(indel_stop) - int(indel_start) + 1
   
-            print("{} {} {} {}".format(indel_start, indel_stop, indel_len, record['nt_change']))
-
-
-          
-                
             snv_pos = 30
             upstream_offset = 0
             downstream_offset = 2
@@ -1541,19 +1430,7 @@ def make_indel_peptides_context(args):
                 upstream_offset += -2
                 downstream_offset += 0
                 snv_pos += 2
-#            variant_tx_seqs = ''
-#            if variant_txs_metadata[variant_tx]['strand'] == '+':
-#                print('positive_strand')
-#                for i in strands:
-#                    for cds in sorted(variant_txs_metadata[variant_tx]['cds']):
-#                        variant_tx_seqs += exon_seqs[i][cds]
-#            elif variant_txs_metadata[variant_tx]['strand'] == '-':
-#                print('negative_strand')
-#                for i in strands:
-#                    for cds in sorted(variant_txs_metadata[variant_tx]['cds'], reverse=True):
-#                        variant_tx_seqs += exon_seqs[i][cds].reverse_complement()
 
-            print(variant_tx_seqs)
             target_seq = ''
             # Walking through to find position
             steps = 1
@@ -1584,26 +1461,6 @@ def make_indel_peptides_context(args):
                 mutant_peptides["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:NA GENOMIC_CONTEXT:NA".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['transcript'], record['meta'].REF, record['meta'].ALT, 'inframe')] = tumor_aas[0]
                 mutant_seqs["MD5:{} VARIANT_POS:{}_{} CDNA_POS:{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:NA GENOMIC_CONTEXT:NA".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['cdna_pos'], record['transcript'], record['meta'].REF, record['meta'].ALT, 'inframe')] = tumor_nts[0]
                          
-    
-#                    stop_aa3 = dup_rec_aa.split('_')[1][:3]
-#                    stop_aa = seq1(stop_aa3)
-#                else:
-#                    stop_pos_aa = start_pos_aa
-#                    stop_aa3 = start_aa3
-#                    stop_aa = start_aa
-#    
-#                print("{} {} {}".format(start_pos_aa, start_aa, start_aa3))
-#                print("{} {} {}".format(stop_pos_aa, stop_aa, stop_aa3))
-#    
-#                if re.search('ins', record['nt_change']):
-#                    ins_rec_nt, bufr, ins_nt = record['nt_change'].partition('ins')
-#                    start_pos_nt = int(ins_rec_nt.split('_')[0]) - 1
-#                    stop_pos_nt = int(ins_rec_nt.split('_')[1]) - 1
-#                    mut_nt = ''.join(bufr_nt[:start_pos_nt+1] + [ins_nt] + bufr_nt[stop_pos_nt:])
-#
-#    # Do stuff here to put these peptides into the mutant_peptides dict.
-
-
     for entry in frameshift_indels.keys():
         for record in frameshift_indels[entry]:
             variant_tx = record['transcript'].partition('.')[0]
@@ -1625,7 +1482,6 @@ def make_indel_peptides_context(args):
             
             variant_tx_seqs = {}
 
-#            strands = ['norm', 'tumor']
             strands = ['tumor']
             for i in strands:
                 variant_tx_seqs[i] = ''
@@ -1649,7 +1505,6 @@ def make_indel_peptides_context(args):
             indel_len = 0
 
             # DELETIONS #
-#            if re.search("del$", record['aa3_change']):
             if re.search("del", record['nt_change']):
                 print("FRAMESHIFT DELETION: {}:{}".format(record['meta'].CHROM, record['meta'].POS))
                 del_rec_coords, buffer, del_rec_nt = record['nt_change'].partition('del')
@@ -1663,7 +1518,6 @@ def make_indel_peptides_context(args):
                     indel_stop = del_rec_coords
                     indel_len = 1
             # INSERTIONS #
-#            elif re.search("[0-9]ins", record['aa3_change']):
             elif re.search("ins", record['nt_change']):
                 print("INFRAME INSERTION: {}:{}".format(record['meta'].CHROM, record['meta'].POS))
                 ins_rec_nt, bufr, ins_nt = record['nt_change'].partition('ins')
@@ -1671,19 +1525,6 @@ def make_indel_peptides_context(args):
                 indel_start = int(ins_rec_nt.split('_')[0]) - 1
                 indel_stop = int(ins_rec_nt.split('_')[1]) - 1
                 indel_len = int(indel_stop) - int(indel_start) + 2
-#            # INSERTIONS/DELETIONS #
-#            elif re.search("delins", record['aa3_change']):
-#                print("INFRAME INSERTION/DELETION: {}:{}".format(record['meta'].CHROM, record['meta'].POS))
-#              
-#                pass
-#                del_rec_aa, bufr, ins_aa3 = record['aa3_change'].partition('delins')
-#    
-#                ins_aa = seq1(ins_aa3)
-#                start_pos_aa = int(del_rec_aa.split('_')[0][3:]) - 1
-#                start_aa3 = del_rec_aa.split('_')[0][:3]
-#                start_aa = seq1(start_aa3)
-#                stop_pos_aa = 0
-#                stop_aa = 'foo'
 
             # DUPLICATIONS #
             elif re.search("dup", record['nt_change']):
@@ -1700,11 +1541,6 @@ def make_indel_peptides_context(args):
                     indel_stop = dup_rec_coords
                     indel_len = 1
   
-            print("{} {} {} {}".format(indel_start, indel_stop, indel_len, record['nt_change']))
-
-
-          
-                
             snv_pos = 30
             upstream_offset = 0
             downstream_offset = 2
@@ -1755,636 +1591,11 @@ def make_indel_peptides_context(args):
                 mutant_seqs["MD5:{} VARIANT_POS:{}_{} CDNA_POS:{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:NA GENOMIC_CONTEXT:NA".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['cdna_pos'], record['transcript'], record['meta'].REF, record['meta'].ALT, 'inframe')] = tumor_nts[0]
                 #mutant_seqs["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:NA GENOMIC_CONTEXT:NA".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['transcript'], record['meta'].REF, record['meta'].ALT, 'frameshift')] = tumor_nts[0]
 
-#    sys.exit()
-#            # DELETIONS #
-#            print(record)
-#            if re.search("del", record['nt_change']):
-#                print("Frameshift deletion {}".format(record))
-#                del_rec_nt, buffer, del_nt = record['nt_change'].partition('del')
-#                start_pos_nt = 0
-#                stop_pos_nt = 0
-#                start_base = 'A'
-#                stop_base = 'A'
-#                if re.search('_', del_rec_nt):
-#                     start_pos_nt = int(del_rec_nt.split('_')[0]) - 1
-#                     stop_pos_nt = int(del_rec_nt.split('_')[1]) - 1
-#                     if del_nt:
-#                         start_nt = del_nt[0]
-#                         stop_nt = del_nt[-1]
-#                else:
-#                    start_pos_nt = int(del_rec_nt) - 1
-#                    stop_pos_nt = start_pos_nt
-#                    if del_nt:
-#                        start_nt = del_nt[0]
-#                        stop_nt = start_base
-#                print("{} {}".format(start_pos_nt, start_nt))
-#                print("{} {}".format(stop_pos_nt, stop_nt))
-#            # INSERTIONS #
-#            if re.search("ins", record['nt_change']):
-#                print("Frameshift insertion {}".format(record))
-#                ins_rec_nt, buffer, ins_nt = record['nt_change'].partition('ins')
-#                start_pos_nt = 0
-#                stop_pos_nt = 0
-#                start_nt = ''
-#                stop_nt = ''
-#                if re.search('_', ins_rec_nt) and not(re.search('\*', ins_rec_nt)):
-#                     #Need to deal with insertions that extend beyond the annotated transcript.
-#                     start_pos_nt = int(ins_rec_nt.split('_')[0]) - 1
-#                     stop_pos_nt = int(ins_rec_nt.split('_')[1]) - 1
-#                     if ins_nt:
-#                         start_nt = ins_nt[0]
-#                         stop_nt = ins_nt[-1]
-#                elif not(re.search('\*', ins_rec_nt)):
-#                    start_pos_nt = int(ins_rec_nt) - 1
-#                    stop_pos_nt = start_pos_nt
-#                    if ins_nt:
-#                        start_nt = ins_seq[0]
-#                        stop_nt = start_nt
-#                else:
-#                    pass
-#                print("{} {}".format(start_pos_nt, start_nt))
-#                print("{} {}".format(stop_pos_nt, stop_nt))
-#            # DUPLICATIONS #
-#            if re.search("dup", record['nt_change']):
-#                print("Frameshift duplication {}".format(record))
-#                dup_rec_nt, buffer, dup_nt = record['nt_change'].partition('dup')
-#                start_pos_nt = 0
-#                stop_pos_nt = 0
-#                start_nt = 'A'
-#                stop_nt = 'A'
-#                if not(re.search('-', dup_rec_nt)):
-#                    if re.search('_', dup_rec_nt):
-#                         start_pos_nt = int(dup_rec_nt.split('_')[0]) - 1
-#                         start_nt = dup_nt[0]
-#                         stop_pos_nt = int(dup_rec_nt.split('_')[1]) - 1
-#                         stop_nt = dup_nt[-1]
-#                    else:
-#                        start_pos_nt = int(dup_rec_nt) - 1
-#                        start_nt = dup_nt[0]
-#                        stop_pos_nt = start_pos_nt
-#                        stop_nt = start_nt
-#                else:
-#                    continue
-#    
-#                print("{} {}".format(start_pos_nt, start_nt))
-#                print("{} {}".format(stop_pos_nt, stop_nt))
-#    
-#            upstream_offset = 0
-#            if (float(start_pos_nt)-1) % 3 == 0:
-#                print("Direct translate")
-#                upstream_offset += 0
-#            elif (float(start_pos_nt) - 2) % 3 == 0:
-#                print("Minus one")
-#                upstream_offset += -1
-#            elif (float(start_pos_nt) - 3) % 3 == 0:
-#                print("Minus two")
-#                upstream_offset += -2
-#            for i in strands:
-#    #Account for indels here within 33 bp.
-#                target_seq = ''
-#                # Walking through to find position
-#                steps = 1
-#                seq = expressed_txs_nts[record['transcript'].partition('.')[0]][i]
-#                for pos_idx, pos in enumerate(seq):
-#                   if int(steps) == int(start_pos_nt):
-#                        
-#                       target_seq = list(seq[pos_idx-27+upstream_offset:])
-#                       break
-#                   if pos_idx == 0:
-#                       if pos != 'x' and pos in ['A', 'C', 'G', 'T'] or re.search('[acgtryswkmbdhv]', pos) and re.search('[ACGT]', seq[pos_idx+1]):
-#                           steps += 1  
-#                   else:
-#                       if pos != 'x' and pos in ['A', 'C', 'G', 'T'] or re.search('[acgtryswkmbdhv]', pos) and (re.search('[ACGT]', seq[pos_idx-1]) and re.search('[ACGT]', seq[pos_idx+1])):
-#                           steps +=1 
-#                print(''.join(target_seq)[:60]) 
-#                tumor_aa = Seq(''.join(target_seq)).translate(to_stop=True)
-#                tumor_aas.append(tumor_aa)
-#                
-#        
-
     with open(args.output, 'w') as ofo:
         for k, v in mutant_peptides.items():
             ofo.write('>{}\n{}\n'.format(k, v))
     with open(args.nt_output, 'w') as ofo:
         for k, v in mutant_seqs.items():
-            ofo.write('>{}\n{}\n'.format(k, v))
-
-
-def make_indel_peptides(args):
-    """
-    """
-    tx_to_aa = load_tx_aas(args)
-    tx_nv_to_aa = {}
-    for k, v in tx_to_aa.items():
-        k_no_version = k.split('.')[0]
-        tx_nv_to_aa[k_no_version] =  v
-    tx_to_cds = load_tx_cds(args)
-    tx_nv_to_cds = {}
-    for k, v in tx_to_cds.items():
-        k_no_version = k.split('.')[0]
-        tx_nv_to_cds[k_no_version] =  v
-
-
-    # We will need to retrieve the nucleotide sequence records as well.
-    print("Getting indels...")
-    conserv_inframe_indels = extract_conservative_inframe_indels(args.somatic_vcf)
-    print("Retrieved {} conservative inframe indels...".format(len(conserv_inframe_indels)))
-    disrupt_inframe_indels = extract_disruptive_inframe_indels(args.somatic_vcf)
-    print("Retrieved {} disruptive inframe indels...".format(len(disrupt_inframe_indels)))
-    frameshift_indels = extract_frameshift_indels(args.somatic_vcf)
-    print("Retrieved {} frameshifte indels...".format(len(frameshift_indels)))
-
-    mutant_peptides = {}
-
-    conserv_disrupt_indels = dict(conserv_inframe_indels, **disrupt_inframe_indels)
-
-
-    # CONSERVATIVE/DISRUPTIVE #
-    for entry in conserv_disrupt_indels:
-        record = conserv_disrupt_indels[entry]
-        print("Current indel: {}".format(record))
-
-        tx_no_version = record['transcript'].split('.')[0]
-        if record['transcript'] not in tx_to_aa.keys() and tx_no_version not in tx_nv_to_aa.keys():
-            continue
-
-        tx_ref_aa = []
-        if record['transcript'] in tx_to_aa.keys():
-            tx_ref_aa = list(tx_to_aa[record['transcript']])
-            tx_ref_nt = list(tx_to_cds[record['transcript']])
-        elif tx_no_version in tx_nv_to_aa.keys():
-            tx_ref_aa = list(tx_nv_to_aa[tx_no_version])
-            tx_ref_nt = list(tx_nv_to_cds[tx_no_version])
-
-        bufr_aa = tx_ref_aa[:]
-        bufr_nt = tx_ref_nt[:]
-
-        # DELETIONS #
-        if re.search("del$", record['aa3_change']):
-            del_rec_aa = record['aa3_change'].strip('del')
-            del_rec_nt = record['nt_change'].strip('del')
-
-            start_pos_aa = int(del_rec_aa.split('_')[0][3:]) - 1
-            start_aa3 = del_rec_aa.split('_')[0][:3]
-            start_aa = seq1(start_aa3)
-            stop_pos_aa = 0
-            stop_aa3 = 'foo'
-            stop_aa = 'foo'
-
-            print(del_rec_nt)
-            bufr1, start_pos_nt, bufr2, stop_pos_nt, seq = re.split('(\d+)', del_rec_nt)
-
-            # Post processing
-            del_nt = seq.replace('del', '')
-            start_pos_nt = int(start_pos_nt) - 1
-            stop_pos_nt = int(stop_pos_nt) - 1
-
-            if len(del_nt) > 0:
-                start_nt = del_nt[0]
-                stop_nt = del_nt[-1]
-            else:
-                start_nt = False
-                stop_nt = False
-
-            print("{} {} {} {} {}".format(start_pos_nt, stop_pos_nt, seq, start_nt, stop_nt))
-
-
-            # Handling single amino acid deletions
-            if re.search('_', del_rec_aa):
-                stop_pos_aa = int(del_rec_aa.split('_')[1][3:]) - 1
-                stop_aa3 = del_rec_aa.split('_')[1][:3]
-                stop_aa = seq1(stop_aa3)
-            else:
-                stop_pos_aa = start_pos_aa
-                stop_aa3 = start_aa3
-                stop_aa = start_aa
-
-            print("{} {} {}".format(start_pos_aa, start_aa, start_aa3))
-            print("{} {} {}".format(stop_pos_aa, stop_aa, stop_aa3))
-
-            if start_pos_aa > len(bufr_aa) or stop_pos_aa > len(bufr_aa):
-                print("The mutation occurs outside of the peptide sequence. Check transcript versions. Continuing with next record...")
-                continue
-            if start_pos_nt > len(bufr_nt) or stop_pos_nt > len(bufr_nt):
-                print("The mutation occurs outside of the coding sequence. Check transcript versions. Continuing with next record...")
-                continue
-
-            if bufr_aa[start_pos_aa] != start_aa or bufr_aa[stop_pos_aa] != stop_aa:
-                print("Either first amino acid doesn't match (FASTA: {}, snpEff: {}) or last amino acid doesn't match (FASTA: {}, snpEff: {}).".format(bufr_aa[start_pos_aa], start_aa, bufr_aa[stop_pos_aa], stop_aa))
-                print("Continuing with next record...")
-                continue
-
-            if (start_nt and stop_nt) and (bufr_nt[start_pos_nt] != start_nt or bufr_nt[stop_pos_nt] != stop_nt):
-                print("Either first nucleotide doesn't match (FASTA: {}, snpEff: {}) or last nucleotide doesn't match (FASTA: {}, snpEff: {}).".format(bufr_nt[start_pos_nt], start_nt, bufr_nt[stop_pos_nt], stop_nt))
-                print("Continuing with next record...")
-                continue
-
-            # Applying deletion
-            mut_aa = ''.join(bufr_aa[:start_pos_aa] + bufr_aa[stop_pos_aa+1:])
-            mut_nt = ''.join(bufr_nt[:start_pos_nt] + bufr_nt[stop_pos_nt+1:])
-
-            # Extraction sequence of interest from reference and mutated sequences.
-            # Should we getting the germline sequence here? May not matter as we're not emitting it.
-            ref_peptide = ''.join(bufr_aa[max(start_pos_aa-args.length,0):min(stop_pos_aa+args.length, len(bufr_aa))])
-            mut_peptide = ''.join(mut_aa[max(start_pos_aa-args.length, 0):min(start_pos_aa+args.length, len(mut_aa))])
-
-            aa_context = ''.join(mut_aa[max(start_pos_aa-13, 0):min(start_pos_aa+14, len(mut_aa))])
-            nt_context = ''.join(mut_nt[max(start_pos_nt-39, 0):min(start_pos_nt+40, len(mut_nt))])
-
-            print("Reference peptide: {}".format(ref_peptide))
-            print("Mutant peptide:    {}".format(mut_peptide))
-            print("Protein context:   {}".format(aa_context))
-            print("Genomic context:   {}".format(nt_context))
-
-            genomic_context_lower_pos = record['meta'].POS - 39
-            genomic_context_upper_pos = record['meta'].POS + 40
-
-            if check_mut_pep_in_nt_context(mut_peptide, nt_context):
-                md5able_str = "{}".format(':'.join([str(record['meta'].CHROM), str(record['meta'].POS), str(record['transcript']), str(record['meta'].REF), str(record['meta'].ALT)])).encode('utf-8')
-                var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
-                mutant_peptides["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:{} GENOMIC_CONTEXT:{} GENOMIC_CONTEXT_RANGE:{}_{}-{}".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['transcript'], record['meta'].REF, record['meta'].ALT, 'inframe_deletion', aa_context, nt_context, record['meta'].CHROM, genomic_context_lower_pos, genomic_context_upper_pos)] = mut_peptide
-
-        # INSERTIONS #
-        elif re.search("[0-9]ins", record['aa3_change']):
-            print(record)
-            print("HERE!")
-
-            ins_rec_aa, bufr, ins_aa3 = record['aa3_change'].partition('ins')
-            ins_aa = seq1(ins_aa3)
-            print(ins_aa)
-            insert_pos_aa = int(ins_rec_aa.split('_')[0][3:]) - 1
-            start_aa = seq1(ins_rec_aa.split('_')[0][:3])
-            insert_plus_one_pos_aa= int(ins_rec_aa.split('_')[1][3:]) - 1
-            start_plus_one_aa = seq1(ins_rec_aa.split('_')[1][:3])
-
-            ins_nt = ''
-            start_pos_nt = ''
-            stop_pos_nt = ''
-            mut_nt = ''
-
-            if re.search('ins', record['nt_change']):
-                ins_rec_nt, bufr, ins_nt = record['nt_change'].partition('ins')
-                start_pos_nt = int(ins_rec_nt.split('_')[0]) - 1
-                stop_pos_nt = int(ins_rec_nt.split('_')[1]) - 1
-                mut_nt = ''.join(bufr_nt[:start_pos_nt+1] + [ins_nt] + bufr_nt[stop_pos_nt:])
-                print("{}\n{}\n{}\n{}".format(ins_nt, start_pos_nt, stop_pos_nt, mut_nt[start_pos_nt-20:stop_pos_nt+20]))
-            elif re.search('dup', record['nt_change']):
-                dup_rec_nt, bufr, ins_nt = record['nt_change'].partition('dup')
-                if not(re.search('-', dup_rec_nt)):
-                    start_pos_nt = int(dup_rec_nt.split('_')[0]) - 1
-                    stop_pos_nt = int(dup_rec_nt.split('_')[1]) - 1
-                    mut_nt = ''.join(bufr_nt[:start_pos_nt-1] + [ins_nt] + bufr_nt[start_pos_nt:])
-                    print("{}\n{}\n{}\n{}".format(ins_nt, start_pos_nt, stop_pos_nt, mut_nt[start_pos_nt-20:stop_pos_nt+20]))
-                else:
-                    continue
-
-
-
-            if bufr_aa[insert_pos_aa] != start_aa or bufr_aa[insert_plus_one_pos_aa] != start_plus_one_aa:
-                print("Insertion site amino acid doesn't match (FASTA: {}, snpEff: {}) or insertion site + 1 amino acid doesn't match (FASTA: {}, snpEff {})".format(bufr_aa[insert_pos_aa], start_aa, bufr_aa[insert_plus_one_pos_aa], start_plus_one_aa))
-                print("Continuing with next record...")
-                continue
-
-            mut_aa = ''.join(bufr_aa[:insert_pos_aa+1] + [ins_aa] + bufr_aa[insert_plus_one_pos_aa:])
-
-            # Should be args.length
-            ref_peptide = ''.join(bufr_aa[max(insert_pos_aa-6,0):min(insert_plus_one_pos_aa+7, len(bufr_aa))])
-            mut_peptide = ''.join(mut_aa[max(insert_pos_aa-6, 0):min(insert_plus_one_pos_aa+len(ins_aa)+7, len(mut_aa))])
-
-
-            aa_context = ''.join(mut_aa[max(insert_pos_aa-19, 0):min(insert_plus_one_pos_aa+len(ins_aa)+20, len(mut_aa))])
-            #nt_context won't need len(ins_nt) in case of dups.
-            nt_context = ''.join(mut_nt[max(start_pos_nt-39, 0):min(stop_pos_nt+len(ins_nt)+40, len(mut_nt))])
-
-            genomic_context_lower_pos = record['meta'].POS - 39
-            genomic_context_upper_pos = record['meta'].POS + 40
-
-            print("Reference peptide: {}".format(ref_peptide))
-            print("Mutant peptide:    {}".format(mut_peptide))
-
-            if check_mut_pep_in_nt_context(mut_peptide, nt_context):
-                md5able_str = "{}".format(':'.join([str(record['meta'].CHROM), str(record['meta'].POS), str(record['transcript']), str(record['meta'].REF), str(record['meta'].ALT)])).encode('utf-8')
-                var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
-                mutant_peptides["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:{} GENOMIC_CONTEXT:{} GENOMIC_CONTEXT_RANGE:{}_{}-{}".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['transcript'], record['meta'].REF, record['meta'].ALT, 'inframe_insertion', aa_context, nt_context, record['meta'].CHROM, genomic_context_lower_pos, genomic_context_upper_pos)] = mut_peptide
-
-        # INSERTIONS/DELETIONS #
-        elif re.search("delins", record['aa3_change']):
-            del_rec_aa, bufr, ins_aa3 = record['aa3_change'].partition('delins')
-
-            ins_aa = seq1(ins_aa3)
-            start_pos_aa = int(del_rec_aa.split('_')[0][3:]) - 1
-            start_aa3 = del_rec_aa.split('_')[0][:3]
-            start_aa = seq1(start_aa3)
-            stop_pos_aa = 0
-            stop_aa = 'foo'
-            # Dealing with single amino acid deletions
-            if re.search('_', del_rec_aa):
-                stop_pos_aa = int(del_rec_aa.split('_')[1][3:]) - 1
-                stop_aa3 = del_rec_aa.split('_')[1][:3]
-                stop_aa = seq1(stop_aa3)
-            else:
-                stop_pos_aa = start_pos_aa
-                stop_aa3 = start_aa3
-                stop_aa = start_aa
-
-            print("{} {} {}".format(start_pos_aa, start_aa, start_aa3))
-            print("{} {} {}".format(stop_pos_aa, stop_aa, stop_aa3))
-
-
-            ins_nt = '' # For 'dup' cases...
-            mut_nt = ''
-            start_pos_nt = 0
-            stop_pos_nt = 0
-            if re.search('ins', record['nt_change']):
-                ins_rec_nt, bufr, ins_nt = record['nt_change'].partition('ins')
-                start_pos_nt = int(ins_rec_nt.split('_')[0]) - 1
-                stop_pos_nt = int(ins_rec_nt.split('_')[1]) - 1
-                mut_nt = ''.join(bufr_nt[:start_pos_nt+1] + [ins_nt] + bufr_nt[stop_pos_nt:])
-            elif re.search('dup', record['nt_change']):
-                dup_rec_nt, bufr, ins_nt = record['nt_change'].partition('dup')
-                start_pos_nt = int(dup_rec_nt.split('_')[0]) - 1
-                stop_pos_nt = int(dup_rec_nt.split('_')[1]) - 1
-                mut_nt = ''.join(bufr_nt[:start_pos_nt-1] + [ins_nt] + bufr_nt[start_pos_nt:])
-#            print("{}\n{}\n{}\n{}".format(mut_nt, start_pos_nt, stop_pos_nt, mut_nt[start_pos_nt-20:stop_pos_nt+20]))
-
-            if bufr_aa[start_pos_aa] != start_aa or bufr_aa[stop_pos_aa] != stop_aa:
-                print("Either first amino acid doesn't match (FASTA: {}, snpEff: {}) or last amino acid doesn't match (FASTA: {}, snpEff: {}).".format(bufr_aa[start_pos_aa], start_aa, bufr_aa[stop_pos_aa], stop_aa))
-                print("Continuing with next record...")
-                continue
-
-
-            print("{}".format(''.join(bufr_aa[start_pos_aa-10:start_pos_aa+10])))
-            del_mut_aa = ''.join(bufr_aa[:start_pos_aa] + bufr_aa[stop_pos_aa+1:])
-            print("{}".format(''.join(del_mut_aa[start_pos_aa-10:start_pos_aa+10])))
-            delins_mut_aa = ''.join(del_mut_aa[:start_pos_aa] + ins_aa + del_mut_aa[start_pos_aa:])
-
-            aa_context = ''.join(delins_mut_aa[max(start_pos_aa-19, 0):min(stop_pos_aa+len(ins_aa)+20, len(delins_mut_aa))])
-            #nt_context won't need len(ins_nt) in case of dups.
-            nt_context = ''.join(mut_nt[max(start_pos_nt-39, 0):min(stop_pos_nt+len(ins_nt)+40, len(mut_nt))])
-
-            genomic_context_lower_pos = record['meta'].POS - 39
-            genomic_context_upper_pos = record['meta'].POS + 40
-
-            mut_peptide = ''.join(delins_mut_aa[max(start_pos_aa-7, 0):min(start_pos_aa+len(ins_aa)+7, len(delins_mut_aa))])
-            ref_peptide = ''.join(bufr_aa[max(start_pos_aa-7,0):min(stop_pos_aa+len(ins_aa)+7, len(bufr_aa))])
-
-            print("Reference peptide: {}".format(ref_peptide))
-            print("mutant peptide:    {}".format(mut_peptide))
-            print("Protein context:   {}".format(aa_context))
-            print("Genomic context:   {}".format(nt_context))
-
-#            if check_mut_pep_in_nt_context(mut_peptide, nt_context):
-            md5able_str = "{}".format(':'.join([str(record['meta'].CHROM), str(record['meta'].POS), str(record['transcript']), str(record['meta'].REF), str(record['meta'].ALT)])).encode('utf-8')
-            var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
-            mutant_peptides["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:{} GENOMIC_CONTEXT:{} GENOMIC_CONTEXT_RANGE:{}_{}-{}".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['transcript'], record['meta'].REF, record['meta'].ALT, 'inframe_indel', aa_context, nt_context, record['meta'].CHROM, genomic_context_lower_pos, genomic_context_upper_pos)] = mut_peptide
-
-        # DUPLICATIONS #
-        elif re.search("dup", record['aa3_change']):
-            dup_rec_aa = record['aa3_change'].strip('dup')
-            start_pos_aa = int(dup_rec_aa.split('_')[0][3:]) - 1
-            start_aa3 = dup_rec_aa.split('_')[0][:3]
-            start_aa = seq1(start_aa3)
-            stop_pos_aa = 0
-            stop_aa3 = 'foo'
-            stop_aa = 'foo'
-            # Dealing with single amino acid deletions
-            if re.search('_', dup_rec_aa):
-                stop_pos_aa = int(dup_rec_aa.split('_')[1][3:]) - 1
-                stop_aa3 = dup_rec_aa.split('_')[1][:3]
-                stop_aa = seq1(stop_aa3)
-            else:
-                stop_pos_aa = start_pos_aa
-                stop_aa3 = start_aa3
-                stop_aa = start_aa
-
-            print("{} {} {}".format(start_pos_aa, start_aa, start_aa3))
-            print("{} {} {}".format(stop_pos_aa, stop_aa, stop_aa3))
-
-            if re.search('ins', record['nt_change']):
-                ins_rec_nt, bufr, ins_nt = record['nt_change'].partition('ins')
-                start_pos_nt = int(ins_rec_nt.split('_')[0]) - 1
-                stop_pos_nt = int(ins_rec_nt.split('_')[1]) - 1
-                mut_nt = ''.join(bufr_nt[:start_pos_nt+1] + [ins_nt] + bufr_nt[stop_pos_nt:])
-            elif re.search('dup', record['nt_change']):
-                dup_rec_nt, bufr, ins_nt = record['nt_change'].partition('dup')
-                start_pos_nt = int(dup_rec_nt.split('_')[0]) - 1
-                stop_pos_nt = int(dup_rec_nt.split('_')[1]) - 1
-                mut_nt = ''.join(bufr_nt[:start_pos_nt] + [ins_nt] + bufr_nt[start_pos_nt:])
-
-            if start_pos_aa > len(bufr_aa) or stop_pos_aa > len(bufr_aa):
-                print("The mutation occurs outside of the peptide sequence. Check transcript versions.")
-                continue
-
-            if bufr_aa[start_pos_aa] != start_aa or bufr_aa[stop_pos_aa] != stop_aa:
-                print("Either first amino acid doesn't match (FASTA: {}, snpEff: {}) or last amino acid doesn't match (FASTA: {}, snpEff: {}).".format(bufr_aa[start_pos_aa], start_aa, bufr_aa[stop_pos_aa], stop_aa))
-                print("Continuing with next record...")
-                continue
-            duped_aa = bufr_aa[start_pos_aa:stop_pos_aa+1]
-            mut_aa = bufr_aa[:start_pos_aa] + duped_aa + bufr_aa[start_pos_aa:]
-
-            mut_peptide = ''.join(mut_aa[max(stop_pos_aa-6, 0):min(start_pos_aa+len(duped_aa)+7, len(mut_aa))])
-
-            aa_context = ''.join(mut_aa[max(start_pos_aa-19, 0):min(stop_pos_aa+len(duped_aa)+20, len(mut_aa))])
-            #nt_context won't need len(ins_nt) in case of dups.
-            rt_context = ''.join(bufr_nt[max(start_pos_nt-39, 0):min(stop_pos_nt+len(ins_nt)+40, len(bufr_nt))])
-            nt_context = ''.join(mut_nt[max(start_pos_nt-39, 0):min(stop_pos_nt+len(ins_nt)+40, len(mut_nt))])
-
-            genomic_context_lower_pos = record['meta'].POS - 39
-            genomic_context_upper_pos = record['meta'].POS + 40
-
-            print("ReferenceGenomic context: {}".format(rt_context))
-            print("Mutant Genomic context:   {}".format(nt_context))
-            print("Duped seq:       {}".format(''.join(duped_aa)))
-            print("Reference protein context: {}".format(''.join(bufr_aa[start_pos_aa-15:stop_pos_aa+15])))
-            print("Mutant protein context:    {}".format(''.join(mut_aa[start_pos_aa-15:stop_pos_aa+15])))
-            print("Mutant peptide:            {}".format(mut_peptide))
-
-            if check_mut_pep_in_nt_context(mut_peptide, nt_context):
-                md5able_str = "{}".format(':'.join([str(record['meta'].CHROM), str(record['meta'].POS), str(record['transcript']), str(record['meta'].REF), str(record['meta'].ALT)])).encode('utf-8')
-                var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
-                mutant_peptides["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:{} GENOMIC_CONTEXT:{} GENOMIC_CONTEXT_RANGE:{}_{}-{}".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['transcript'], record['meta'].REF, record['meta'].ALT, 'inframe_dup', aa_context, nt_context, record['meta'].CHROM, genomic_context_lower_pos, genomic_context_upper_pos)] = mut_peptide
-
-    # FRAMESHIFTS #
-    for entry in frameshift_indels.keys():
-        record = frameshift_indels[entry]
-        tx_no_version = record['transcript'].split('.')[0]
-        if record['transcript'] not in tx_to_aa.keys() and tx_no_version not in tx_nv_to_aa.keys():
-            continue
-        tx_ref_nt = []
-        if record['transcript'] in tx_to_cds.keys():
-            tx_ref_nt = list(tx_to_cds[record['transcript']])
-        elif tx_no_version in tx_nv_to_cds.keys():
-            tx_refnt = list(tx_nv_to_cds[tx_no_version])
-        bufr_nt = tx_ref_nt[:]
-
-        # DELETIONS #
-        if re.search("del", record['nt_change']):
-            print("Frameshift deletion {}".format(record))
-            del_rec_nt, buffer, del_nt = record['nt_change'].partition('del')
-            start_pos_nt = 0
-            stop_pos_nt = 0
-            start_base = 'A'
-            stop_base = 'A'
-            if re.search('_', del_rec_nt):
-                 start_pos_nt = int(del_rec_nt.split('_')[0]) - 1
-                 stop_pos_nt = int(del_rec_nt.split('_')[1]) - 1
-                 if del_nt:
-                     start_nt = del_nt[0]
-                     stop_nt = del_nt[-1]
-            else:
-                start_pos_nt = int(del_rec_nt) - 1
-                stop_pos_nt = start_pos_nt
-                if del_nt:
-                    start_nt = del_nt[0]
-                    stop_nt = start_base
-            print("{} {}".format(start_pos_nt, start_nt))
-            print("{} {}".format(stop_pos_nt, stop_nt))
-            if stop_pos_nt > len(bufr_nt):
-                print("The mutation occurs outside of the trancsript sequence. Check transcript versions.")
-                continue
-
-            mut_nt = bufr_nt[:start_pos_nt] + bufr_nt[stop_pos_nt+1:]
-            print("Reference NT: {}".format(''.join(bufr_nt[start_pos_nt-10:stop_pos_nt+10])))
-            print("Mutant    NT: {}".format(''.join(mut_nt[start_pos_nt-10:stop_pos_nt+10])))
-            ref_aa = str(Seq(''.join(bufr_nt)).translate(to_stop=True, cds=False))
-            mut_aa = str(Seq(''.join(mut_nt)).translate(to_stop=True, cds=False))
-
-            start_pos_aa = int(start_pos_nt/3)
-            stop_pos_aa = int(stop_pos_nt/3)
-
-            print("{} {}".format(start_pos_aa, stop_pos_aa))
-
-            ref_peptide = ref_aa[max(start_pos_aa-7, 0):]
-            mut_peptide = mut_aa[max(start_pos_aa-7, 0):]
-#            nt_context = ''.join(mut_nt[start_pos_nt-10:stop_pos_nt+10])
-            nt_context = ''.join(mut_nt[max(start_pos_nt-24, 0):])
-
-            print("Mutant genomic context:    {}".format(nt_context))
-            print("Reference peptide: {}".format(ref_peptide))
-            print("Mutant peptide:    {}".format(mut_peptide))
-
-            genomic_context_lower_pos = record['meta'].POS - 39
-            genomic_context_upper_pos = record['meta'].POS + 40
-
-
-#            if check_mut_pep_in_nt_context(mut_peptide, mut_nt):
-            md5able_str = "{}".format(':'.join([str(record['meta'].CHROM), str(record['meta'].POS), str(record['transcript']), str(record['meta'].REF), str(record['meta'].ALT)])).encode('utf-8')
-            var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
-            mutant_peptides["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:{} GENOMIC_CONTEXT:{} GENOMIC_CONTEXT_RANGE:{}_{}-{}".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['transcript'], record['meta'].REF, record['meta'].ALT, 'frameshift_deletion', 'NA', 'NA', record['meta'].CHROM, genomic_context_lower_pos, genomic_context_upper_pos)] = mut_peptide
-
-        # INSERTIONS #
-        if re.search("ins", record['nt_change']):
-            print("Frameshift insertion {}".format(record))
-            ins_rec_nt, buffer, ins_nt = record['nt_change'].partition('ins')
-            start_pos_nt = 0
-            stop_pos_nt = 0
-            start_nt = ''
-            stop_nt = ''
-            if re.search('_', ins_rec_nt) and not(re.search('\*', ins_rec_nt)):
-                 #Need to deal with insertions that extend beyond the annotated transcript.
-                 start_pos_nt = int(ins_rec_nt.split('_')[0]) - 1
-                 stop_pos_nt = int(ins_rec_nt.split('_')[1]) - 1
-                 if ins_nt:
-                     start_nt = ins_nt[0]
-                     stop_nt = ins_nt[-1]
-            elif not(re.search('\*', ins_rec_nt)):
-                start_pos_nt = int(ins_rec_nt) - 1
-                stop_pos_nt = start_pos_nt
-                if ins_nt:
-                    start_nt = ins_seq[0]
-                    stop_nt = start_nt
-            else:
-                pass
-            print("{} {}".format(start_pos_nt, start_nt))
-            print("{} {}".format(stop_pos_nt, stop_nt))
-            if stop_pos_nt > len(bufr_nt):
-                print("The mutation occurs outside of the trancsript sequence. Check transcript versions.")
-                continue
-            mut_nt = bufr_nt[:start_pos_nt + 1] + [ins_nt] + bufr_nt[stop_pos_nt:]
-            print("Mut seq: {}".format(''.join(mut_nt)))
-
-            ref_aa = str(Seq(''.join(bufr_nt)).translate(to_stop=True, cds=False))
-            mut_aa = str(Seq(''.join(mut_nt)).translate(to_stop=True, cds=False))
-
-            start_pos_aa = int(start_pos_nt/3)
-            stop_pos_aa = int(stop_pos_nt/3)
-
-            print("{} {}".format(start_pos_aa, stop_pos_aa))
-
-            print("Reference affected region: {}".format(ref_aa[start_pos_aa-5:stop_pos_aa+5]))
-            print("Mutant affected region:    {}".format(mut_aa[start_pos_aa-5:stop_pos_aa+5]))
-
-            mut_peptide = mut_aa[max(start_pos_aa-7,0):]
-
-#            nt_context = ''.join(mut_nt[max(start_pos_nt-24, 0):])
-            nt_context = ''.join(mut_nt[start_pos_nt-10:stop_pos_nt+10])
-
-
-            genomic_context_lower_pos = record['meta'].POS - 39
-            genomic_context_upper_pos = record['meta'].POS + 40
-
-#            if check_mut_pep_in_nt_context(mut_peptide, nt_context):
-            md5able_str = "{}".format(':'.join([str(record['meta'].CHROM), str(record['meta'].POS), str(record['transcript']), str(record['meta'].REF), str(record['meta'].ALT)])).encode('utf-8')
-            var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
-            mutant_peptides["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:{} GENOMIC_CONTEXT:{} GENOMIC_CONTEXT_RANGE:{}_{}-{}".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['transcript'], record['meta'].REF, record['meta'].ALT, 'frameshift_insertion', 'NA', nt_context, record['meta'].CHROM, genomic_context_lower_pos, genomic_context_upper_pos)] = mut_peptide
-
-        # DUPLICATIONS #
-        if re.search("dup", record['nt_change']):
-            print("Frameshift duplication {}".format(record))
-            dup_rec_nt, buffer, dup_nt = record['nt_change'].partition('dup')
-            start_pos_nt = 0
-            stop_pos_nt = 0
-            start_nt = 'A'
-            stop_nt = 'A'
-            if not(re.search('-', dup_rec_nt)):
-                if re.search('_', dup_rec_nt):
-                     start_pos_nt = int(dup_rec_nt.split('_')[0]) - 1
-                     start_nt = dup_nt[0]
-                     stop_pos_nt = int(dup_rec_nt.split('_')[1]) - 1
-                     stop_nt = dup_nt[-1]
-                else:
-                    start_pos_nt = int(dup_rec_nt) - 1
-                    start_nt = dup_nt[0]
-                    stop_pos_nt = start_pos_nt
-                    stop_nt = start_nt
-            else:
-                continue
-
-            print("{} {}".format(start_pos_nt, start_nt))
-            print("{} {}".format(stop_pos_nt, stop_nt))
-
-            if stop_pos_nt > len(bufr_nt):
-                print("The mutation occurs outside of the trancsript sequence. Check transcript versions.")
-                continue
-
-            mut_nt = ''.join(bufr_nt[:start_pos_nt] + [dup_nt] +  bufr_nt[stop_pos_nt:])
-
-            ref_aa = str(Seq(''.join(bufr_nt)).translate(to_stop=True, cds=False))
-            mut_aa = str(Seq(''.join(mut_nt)).translate(to_stop=True, cds=False))
-
-            start_pos_aa = int(start_pos_nt/3)
-            stop_pos_aa = int(stop_pos_nt/3)
-
-            print("{} {}".format(start_pos_aa, stop_pos_aa))
-
-            print("Reference affected region: {}".format(ref_aa[start_pos_aa-5:stop_pos_aa+5]))
-            print("Mutant affected region: {}".format(mut_aa[stop_pos_aa-5:stop_pos_aa+5]))
-
-            mut_peptide = mut_aa[max(start_pos_aa-7,0):]
-#            nt_context = mut_nt[max(start_pos_nt-24,0):]
-            nt_context = ''.join(mut_nt[start_pos_nt-10:stop_pos_nt+10])
-
-            genomic_context_lower_pos = record['meta'].POS - 39
-            genomic_context_upper_pos = record['meta'].POS + 40
-
-
-#            if check_mut_pep_in_nt_context(mut_peptide, nt_context):
-            md5able_str = "{}".format(':'.join([str(record['meta'].CHROM), str(record['meta'].POS), str(record['transcript']), str(record['meta'].REF), str(record['meta'].ALT)])).encode('utf-8')
-            var_md5 = hashlib.md5(md5able_str).hexdigest()[:16]
-            mutant_peptides["MD5:{} VARIANT_POS:{}_{} TRANSCRIPT:{} REF:{} ALT:{} INDEL_TYPE:{} PROTEIN_CONTEXT:{} GENOMIC_CONTEXT:{} GENOMIC_CONTEXT_RANGE:{}_{}-{}".format(var_md5, record['meta'].CHROM, record['meta'].POS, record['transcript'], record['meta'].REF, record['meta'].ALT, 'frameshift_duplication', 'NA', nt_context, record['meta'].CHROM, genomic_context_lower_pos, genomic_context_upper_pos)] = mut_peptide
-
-    with open(args.output, 'w') as ofo:
-        for k, v in mutant_peptides.items():
             ofo.write('>{}\n{}\n'.format(k, v))
 
 
@@ -2396,92 +1607,6 @@ def check_mut_pep_in_nt_context(mut_peptide, nt_context):
         print("Mutant peptide is not within ORFs of NT context. Stopping.")
         sanity_check = False
     return sanity_check
-
-def check_rna_coverage(args):
-    """
-    Takes a FASTA file with the required header information (see documentation)
-    Appends new tag to header regarding RNA coverage in reads. This will
-    optionally filter recrods that do not have RNA coverage.
-
-    RNA_COVERAGE: (YES/NO)
-    PERC_RNA_READS_W_VAR: (0.0-100.0)
-    """
-    rna_bam = pysam.AlignmentFile(args.tumor_rna_bam, "rb")
-
-    with open(args.peptide_fasta) as fo:
-        for record in SeqIO.parse(fo, 'fasta'):
-            print(record)
-
-    tx_to_cds = load_tx_cds(args)
-
-    # This is a fairly shallow check
-    # Some quick pseudocode:
-    # for record in FASTA:
-    #      get tx cds and ensure that txomic context is not present in transcript.
-    #      get variant position
-    #      get genomic range (var_pos +/- 10 bp)
-    #      get txome_context(center +/- 10 bp)
-    #      get reads mapping to region from pysam.fetch()
-    #      use re.search to determine what proportion of reads contain the txome context ONCE
-    #      Get YES/NO and proportion
-
-    new_header_and_seqs = {}
-
-    with open(args.peptide_fasta) as fo:
-        for record in SeqIO.parse(fo, 'fasta'):
-            #print(record)
-
-            record_meta = {i.split(':')[0]:i.split(':')[1] for i in record.description.split(' ')}
-            #print(record_meta)
-
-            genome_coord_chr = record_meta['VARIANT_POS'].split('_')[0]
-            genome_coord_lo = int(record_meta['VARIANT_POS'].split('_')[1]) - 10
-            genome_coord_hi = int(record_meta['VARIANT_POS'].split('_')[1]) + 10
-
-            total_context = record_meta['GENOMIC_CONTEXT']
-            midpoint = int(len(total_context)/2)
-            expected_seq = total_context[midpoint-5:midpoint+5]
-
-            covered_reads = []
-            for read in rna_bam.fetch(genome_coord_chr, genome_coord_lo, genome_coord_hi):
-                covered_reads.append(read.query_sequence)
-#            print("Number of reads: {}".format(len(covered_reads)))
-            positive_hits = 0
-            if len(covered_reads) > 0:
-                for read in covered_reads:
-#                    print(expected_seq)
-#                    print(read)
-#                    print(bool(re.search(expected_seq, read)))
-                    if bool(re.search(expected_seq, read)):
-                        print(expected_seq)
-                        print(read)
-                        print(re.search(expected_seq, read))
-                        positive_hits += 1
-                print("Positive hits: {}".format(positive_hits))
-                prop_var = positive_hits/(len(covered_reads) + 0.0)
-                if prop_var > 0.01:
-                    print(positive_hits)
-                    print(prop_var)
-                    #print("Reads with mutant: {}".format(positive_hits))
-                    record_meta['TOTAL_RNA_COVERGE'] = len(covered_reads)
-                    record_meta['PROPORTION_RNA_READS_WITH_VARIANT'] = positive_hits/len(covered_reads)
-                    new_header = str(record.description) + " {}:{} {}:{:.2f}".format('TOTAL_RNA_COVERAGE', len(covered_reads), 'PROPORTION_RNA_VARIANT_READS', prop_var)
-                    new_header_and_seqs[new_header] = record.seq
-            else:
-                pass
-#                new_header = str(record.description) + " {}:{} {}:{}".format('TOTAL_RNA_COVERAGE', '0', 'PROPORTION_RNA_VARIANT_READS', '0.00')
-
-
-
-    if new_header_and_seqs:
-        with open(args.output, 'w') as ofo:
-            for k, v in new_header_and_seqs.items():
-                ofo.write(">{}\n{}\n".format(k, v))
-
-
-
-
-
 
 
 def pileup_truncated(bam,contig, start=None, stop=None):
@@ -2569,9 +1694,7 @@ def get_expressed_txs(args, threshold):
                         txid_column = i
             elif line_idx:
                 count = np.log2(float(line[count_column]) + 1)
-#                print("{} {}".format(count, threshold))
                 if float(count) > float(threshold):
-#                    expressed_txids.append(line[txid_column].split('.')[0])
                     expressed_txids.append(line[txid_column])
     return expressed_txids
 
@@ -2591,10 +1714,9 @@ def filter_vcf_by_expression(args, expressed_txids):
         annotations = [x for x in record.INFO['ANN']]
         for annotation in annotations:
             effects = annotation.split('|')
-#            transcript = effects[6].partition('.')[0]
             transcript = effects[6]
             #print("Transcript: {}".format(transcript))
-            if transcript in expressed_txids and record not in filtered_records:
+            if transcript or transcript.split('.')[0] in expressed_txids and record not in filtered_records:
                 filtered_records.append(record)
                 somatic_transcripts.append(transcript)
        
@@ -2622,17 +1744,6 @@ def write_isolated_vcf(args, filtered_records):
     vcf_writer = vcf.Writer(open(args.output, 'w'), vcf_reader)
     for filtered_record in filtered_records:
         vcf_writer.write_record(filtered_record)
-
-
-#Remove
-#def write_crowded_vcf(args, filtered_records):
-#    """
-#    refactor
-#    """
-#    vcf_reader = vcf.Reader(filename=args.somatic_vcf, compressed=True)
-#    vcf_writer = vcf.Writer(open(args.crowded_vars_output, 'w'), vcf_reader)
-#    for filtered_record in filtered_records:
-#        vcf_writer.write_record(filtered_record)
 
 
 def isolated_variants(args):
@@ -2803,11 +1914,14 @@ def filter_mutant_peptides(args):
                     elif int(line[0]) == threshold: 
                         ofo.write("{}\n".format('\t'.join(line)))
     
-              
 
 def add_snv_metadata(args):
     """
     """
+    peptide_to_foreign = parse_ag_foreignness(args.ag_foreignness)
+    peptide_to_dissim = parse_ag_dissimilarity(args.ag_dissimilarity)
+    peptide_allele_to_stability = parse_netmhcstabpan(args.binding_stabilities)
+
     checksum_to_meta_map = {}
     with open(args.mutant_peptides) as fo:
         for line in fo.readlines():
@@ -2830,7 +1944,7 @@ def add_snv_metadata(args):
                 tx_col_idx = line.split('\t').index('Name')
             else:
                 line = line.split('\t')
-                tx_to_tpm[line[tx_col_idx].split('.')[0]] = float(line[tpm_col_idx])
+                tx_to_tpm[line[tx_col_idx]] = float(line[tpm_col_idx])
 
     for k,v in tx_to_tpm.items():
         tx_to_log2tpm[k] = np.log2(v + 1)
@@ -2862,7 +1976,8 @@ def add_snv_metadata(args):
                 var_to_ccf[var] = ccf
 
     header = []
-    header_extension = ['gene_name', 'transcript_identifier',
+    header_extension = ['foreignness', 'dissimilarity', 'binding_stability',
+                        'gene_name', 'transcript_identifier',
                         'variant_position', 'reference_allele',
                         'alternate_allele', 'tpm', 'log2(tpm+1)',
                         'uq(log2(tpm+1))', 'cancer_cell_fraction',
@@ -2906,22 +2021,26 @@ def add_snv_metadata(args):
                 if csum not in checksum_to_meta_map.keys():
                     continue
                 tx_id = checksum_to_meta_map[csum]['TRANSCRIPT']
-                if float(line[15]) < 1000 and tx_id.split('.')[0] in tx_to_gene.keys() and tx_id.split('.')[0] in tx_to_tpm.keys() and line[10] in checksum_to_meta_map.keys():
+                if float(line[15]) < 1000 and tx_id in tx_to_gene.keys() and tx_id in tx_to_tpm.keys() and line[10] in checksum_to_meta_map.keys():
                     line.insert(0, 'SNV')
-                    gene_name = tx_to_gene[tx_id.split('.')[0]]
+                    gene_name = tx_to_gene[tx_id]
+                    foreign = 'NA'
+                    dissim = 'NA'
+                    try: 
+                        foreign = peptide_to_foreign[line[3]]
+                        dissim = peptide_to_dissim[line[3]]
+                    except:
+                        pass
+                    binding_stability = peptide_allele_to_stability["{}-{}".format(line[2], line[3])]
                     var_pos = checksum_to_meta_map[csum]['VARIANT_POS'].replace('_', ':')
                     ref = checksum_to_meta_map[csum]['REF']
                     alt = checksum_to_meta_map[csum]['ALT'].replace('[','').replace(']','')
-                    tpm = tx_to_tpm[tx_id.split('.')[0]]
-                    log2tpm = tx_to_log2tpm[tx_id.split('.')[0]]
-                    uqlog2tpm = tx_to_uqlog2tpm[tx_id.split('.')[0]]
+                    tpm = tx_to_tpm[tx_id]
+                    log2tpm = tx_to_log2tpm[tx_id]
+                    uqlog2tpm = tx_to_uqlog2tpm[tx_id]
                     aa_context = checksum_to_meta_map[csum]['PROTEIN_CONTEXT']
                     nt_context = checksum_to_meta_map[csum]['GENOMIC_CONTEXT']
                     var_type = checksum_to_meta_map[csum]['SNV_TYPE']
-#                    rna_coverage = 'NA'
-#                    proportion_rna_var = 'NA'
-#                    rna_coverage = checksum_to_meta_map[csum]['TOTAL_RNA_COVERAGE']
-#                    proportion_rna_var = checksum_to_meta_map[csum]['PROPORTION_RNA_VARIANT_READS']
                     ccf = 'NA'
                     if var_pos in var_to_ccf.keys():
                         ccf = var_to_ccf[var_pos]
@@ -2931,7 +2050,7 @@ def add_snv_metadata(args):
                     if 'WB' in line:
                        line.remove('<=')
                        line.remove('WB')
-                    line.extend([gene_name, tx_id, var_pos, ref, alt, str(tpm), str(log2tpm), str(uqlog2tpm), ccf, aa_context, nt_context, var_type])
+                    line.extend([foreign, dissim, binding_stability, gene_name, tx_id, var_pos, ref, alt, str(tpm), str(log2tpm), str(uqlog2tpm), ccf, aa_context, nt_context, var_type])
                     line = line[:5] + line[11:]
                     new_lines.append(line)
 
@@ -2944,6 +2063,40 @@ def add_snv_metadata(args):
 def add_indel_metadata(args):
     """
     """
+
+    peptide_to_foreign = {}
+    with open(args.ag_foreignness) as ffo:
+        foreign_col_idx = ''
+        pep_col_idx = ''
+        for line_idx, line in enumerate(ffo.readlines()):
+            line = line.strip()
+            if line_idx == 0:
+                foreign_col_idx = line.split(',').index('foreignness_score')
+                pep_col_idx = line.split(',').index('nmer')
+            else:
+                line = line.split(',')
+                peptide_to_foreign[line[pep_col_idx]] = line[foreign_col_idx]
+
+    peptide_to_dissim = {}
+    with open(args.ag_dissimilarity) as ffo:
+        dissim_col_idx = ''
+        pep_col_idx = ''
+        for line_idx, line in enumerate(ffo.readlines()):
+            line = line.strip()
+            if line_idx == 0:
+                dissim_col_idx = line.split(',').index('dissimilarity')
+                pep_col_idx = line.split(',').index('nmer')
+            else:
+                line = line.split(',')
+                peptide_to_dissim[line[pep_col_idx]] = line[dissim_col_idx]
+
+    peptide_allele_to_stability = {}
+    with open(args.binding_stabilities) as ffo:
+        for line in ffo.readlines():
+            if line.startswith(" ") and re.search("HLA-", line):
+                line = line.split()
+                peptide_allele_to_stability["{}-{}".format(line[1], line[2])] = line[5]
+
     checksum_to_meta_map = {}
     with open(args.mutant_peptides) as mto:
         for line in mto.readlines():
@@ -2997,7 +2150,8 @@ def add_indel_metadata(args):
                 var_to_ccf[var] = ccf
 
     header = []
-    header_extension = ['gene_name', 'transcript_identifier',
+    header_extension = ['foreignness', 'dissimilarity',
+                        'binding_stability','gene_name', 'transcript_identifier',
                         'variant_position', 'reference_allele',
                         'alternate_allele', 'tpm', 'log2(tpm+1)',
                         'uq(log2(tpm+1))', 'cancer_cell_fraction',
@@ -3039,6 +2193,14 @@ def add_indel_metadata(args):
             tx_id = checksum_to_meta_map[csum]['TRANSCRIPT']
             if tx_id.split('.')[0] in tx_to_gene.keys() and tx_id.split('.')[0] in tx_to_tpm.keys() and float(line[15]) < 1000:
             #if tx_id.split(',')[0] in tx_to_gene.keys() and tx_id.split('.')[0] in tx_to_tpm.keys():
+                foreign = 'NA'
+                dissim = 'NA'
+                try:
+                    foreign = peptide_to_foreign[line[2]]
+                    dissim = peptide_to_dissim[line[2]]
+                except:
+                    pass
+                binding_stability = peptide_allele_to_stability["{}-{}".format(line[1], line[2])]
                 line.insert(0, 'InDel')
                 line = line[:5] + line[11:]
                 gene_name = tx_to_gene[tx_id.split('.')[0]]
@@ -3064,7 +2226,7 @@ def add_indel_metadata(args):
                 if 'WB' in line:
                     line.remove('<=')
                     line.remove('WB')
-                line.extend([gene_name, tx_id, var_pos, ref, alt, str(tpm), str(log2tpm), str(uqlog2tpm), ccf, aa_context, nt_context, var_type])
+                line.extend([foreign, dissim, binding_stability, gene_name, tx_id, var_pos, ref, alt, str(tpm), str(log2tpm), str(uqlog2tpm), ccf, aa_context, nt_context, var_type])
                 new_lines.append(line)
 
 
@@ -3102,7 +2264,6 @@ def make_pyclone_vi_inputs(args):
                 pass
             else:
                 line = line.rstrip().split('\t')
-#                if len(line[3]) > 0 and len(line[4]) > 0:
                 line = [i for i in line if i != '.']
                 vars['{}'.format('_'.join(line[:2]))] = {}
                 vars['{}'.format('_'.join(line[:2]))]['ref_depth'] = 0
@@ -3116,8 +2277,6 @@ def make_pyclone_vi_inputs(args):
     mutect_vcf_reader = vcf.Reader(open(args.mutect_vcf), compressed=False)
     depths = {}
     for record in mutect_vcf_reader:
-#        print([re.search('-ad-', i.sample) for i in record.samples])
-#        print([i.sample for i in record.samples if re.search('-ad-', i.sample)])
         call = record.genotype([i.sample for i in record.samples if re.search('-ad-', i.sample)][0])
         var_key = "{}_{}".format(record.CHROM, record.POS)
         depths[var_key] = {}
@@ -3146,7 +2305,6 @@ def make_pyclone_vi_inputs(args):
     for var in vars.keys():
         print(var)
         chr, pos = var.split('_')
-#        if var in depths.keys():
         easily_parsable.append([chr, pos])
 
     pyclone_inp = []
@@ -3208,8 +2366,6 @@ def expressed_hervs(args):
         print("Abundance threshold: {}".format(args.abundance_threshold))
         tx_threshold = float(args.abundance_threshold)
     print("tx_thresshold: {}".format(tx_threshold))
-#    print("# of expressed transcripts: {}".format(len(expressed_hervs)))
-#    print("Some expressed transcripts: {}".format(expressed_hervs[:10]))
 
     with open(args.output, 'w') as ofo:
         ofo.write('Name,Tumor_CPM,Norm_CPM,log2(Tumor_CPM+1)-log2(Norm_CPM+1),Length,EffectiveLength,TPM,NumReads\n')
@@ -3218,6 +2374,7 @@ def expressed_hervs(args):
                 if (args.trim_chr_prefix):
                     herv_adj = herv.replace('chr', '')
                 ofo.write("{},NA,NA,NA,{}\n".format(herv_adj, all_quant_meta[herv]))
+
 
 def get_expressed_selfs_bed(args):
     """
@@ -3233,12 +2390,12 @@ def get_expressed_selfs_bed(args):
             for line in fo.readlines():
                 for expressed_self_transcript in expressed_self_transcripts:
                     if re.search(expressed_self_transcript, line):
-#                        for segment in ['CDS', 'five_prime_UTR', 'three_prime_UTR']:
                         if re.search('\tCDS\t', line):
                             chr = line.split('\t')[0]
                             start = line.split('\t')[3]
                             stop = line.split('\t')[4]
                             ofo.write("{}\t{}\t{}\n".format(chr, start, stop))
+
 
 def get_expressed_transcripts_bed(args):
     """
@@ -3294,11 +2451,8 @@ def get_expressed_ervs_bed(args):
                         chr = post_met.split('.')[1] 
                         first = post_met.split('.')[2] 
                         second = post_met.split('.')[3] 
-#                    herv = line.split(',')[0]
-#                    chr = herv.split('.')[1] 
-#                    first = herv.split('.')[2] 
-#                    second = herv.split('.')[3] 
                         ofo.write("{}\t{}\t{}\n".format(chr, first, second))
+
 
 def get_expressed_viral_bed(args):
     """
@@ -3435,9 +2589,6 @@ def make_erv_peptides(args):
             new_seq_record_description = 'Mmus38.{}.{}.{}'.format(chr, start, stop)
         print(new_seq_record_description)
         regexed_herv_id = post_met_to_full["{}:{}-{}".format(chr, start, stop)]
-#        regexed_herv_id = [x for x in expressed_hervs_metadata.keys() if re.search(new_seq_record_description, x)][0]
-#        regexed_herv_id = [x for x in expressed_hervs_metadata.keys() if re.search(new_seq_record_description, x)][0]
-        #regexed_herv_id = [re.findall(new_seq_record_description + '+', x)[0] for x in expressed_hervs_metadata.keys() if re.findall(new_seq_record_description + '+', x)]
         print(regexed_herv_id)
         expressed_hervs_seqs[regexed_herv_id] = seq_record.seq
 
@@ -3458,7 +2609,6 @@ def make_erv_peptides(args):
 
     with open(args.output, 'w') as ofo:
         for k, v in expressed_hervs_aas.items():
-#            header = "MD5:{} NAME:{} TUMOR_CPM:{} NORM_CPM:{} DELTA:{} TPM:{} NUMREADS:{} RNA_COVERAGE_RANGE:{} POTENTIAL_GERMLINE_HETS:{}".format(hashlib.md5(str(k).encode('utf-8')).hexdigest()[:16], k, expressed_hervs_metadata[k]['tumor_cpm'], expressed_hervs_metadata[k]['norm_cpm'], expressed_hervs_metadata[k]['delta'], expressed_hervs_metadata[k]['tpm'], expressed_hervs_metadata[k]['numreads'], orf_rna_coverage[k], ','.join([str(x) for x in orf_het_sites[k]]))
             header = "MD5:{} NAME:{} TUMOR_CPM:{} NORM_CPM:{} DELTA:{} TPM:{} NUMREADS:{}".format(hashlib.md5(str(k).encode('utf-8')).hexdigest()[:16], k, expressed_hervs_metadata[k]['tumor_cpm'], expressed_hervs_metadata[k]['norm_cpm'], expressed_hervs_metadata[k]['delta'], expressed_hervs_metadata[k]['tpm'], expressed_hervs_metadata[k]['numreads'])
             ofo.write(">{}\n{}\n".format(header, v))
 
@@ -3467,116 +2617,6 @@ def make_erv_peptides(args):
             header = "MD5:{} NAME:{}".format(hashlib.md5(str(k).encode('utf-8')).hexdigest()[:16], k)
             ofo.write(">{}\n{}\n".format(header, v))#''.join(orf_patient_seq[k])))
 
-
-#def make_herv_peptides(args):
-#    """
-#    """
-#    expressed_hervs = []
-#    expressed_hervs_metadata = {}
-#    expressed_hervs_aas = {}
-#
-#    expressed_herv_col_map = {}
-#
-#    with open(args.expressed_hervs) as fo:
-#        for line_idx, line in enumerate(fo.readlines()):
-#            line = line.rstrip().split(',')
-#            if line_idx == 0: 
-#                for idx, i in enumerate(line): 
-#                    expressed_herv_col_map[i] = idx
-#                print(expressed_herv_col_map)
-#            else:
-#                herv_id = line[expressed_herv_col_map['Name']]
-#                expressed_hervs.append(herv_id)
-#                expressed_hervs_metadata[herv_id] = {}
-#                expressed_hervs_metadata[herv_id]['tumor_cpm'] = line[expressed_herv_col_map['Tumor_CPM']]
-#                expressed_hervs_metadata[herv_id]['norm_cpm'] = line[expressed_herv_col_map['Norm_CPM']]
-#                expressed_hervs_metadata[herv_id]['delta'] = line[expressed_herv_col_map['log2(Tumor_CPM+1)-log2(Norm_CPM+1)']]
-#                expressed_hervs_metadata[herv_id]['tpm'] = line[expressed_herv_col_map['TPM']]
-#                expressed_hervs_metadata[herv_id]['numreads'] = line[expressed_herv_col_map['NumReads']]
-#
-#    expressed_hervs_seqs = {}
-#
-#
-#    for seq_record in SeqIO.parse(args.herv_ref, "fasta"):
-#        if seq_record.description in expressed_hervs: 
-#            expressed_hervs_seqs[seq_record.description] = seq_record.seq
-#
-#    alns = pysam.AlignmentFile(args.tumor_bam, 'rb')
-#
-#    #This is a bit crude right now. It _only_ considers the major allele at
-#    #each position for the nucleotide sequence. I will include something in the
-#    #header to list potentially heterozygous sites. This can be translated within
-#    #the herv_metadata function.
-#
-#    orf_rna_coverage = {}
-#    orf_het_sites = {}
-#    orf_patient_seq = {}
-#
-#
-#    for herv in expressed_hervs_metadata.keys():
-#        orf_patient_seq[herv] = []
-#        orf_het_sites[herv] = []
-#         
-#        print(herv)
-#        print(expressed_hervs_metadata[herv])
-#        herv_chr = herv.split('.')[1] 
-#        herv_start = int(herv.split('.')[2])
-#        herv_stop = int(herv.split('.')[3])
-#        print("{}\t{}\t{}".format(herv_chr, herv_start, herv_stop))
-#        herv_seq = expressed_hervs_seqs[herv]
-#        if herv[-1] == '+':
-#            tmp_info = pileup_truncated(alns, herv_chr, herv_start-1, herv_stop)
-#            pileup_info = [(x.reference_pos, [i for i in x.get_query_sequences() if i]) for x in tmp_info]
-#        elif herv[-1] == '-':
-#            tmp_info = pileup_truncated(alns, herv_chr, herv_start-1, herv_stop)
-#            pileup_info = reversed([(x.reference_pos, [complement(i) for i in x.get_query_sequences() if i]) for x in tmp_info])
-#            
-#        else:
-#            sys.exit("Cannot determine ERV orientation.")
-#
-#        covered_pos = [] 
-#        for pos_idx, pos in enumerate(pileup_info):
-#            
-#            query_seqs = [x.lower() for x in pos[1]]
-#            if not query_seqs:
-#                orf_patient_seq[herv].append(herv_seq[pos_idx])
-#            if query_seqs:
-#                covered_pos.append(pos[0])
-#                counts= {x:query_seqs.count(x) for x in query_seqs}
-#                most_freq_finder = lambda x: scipy.stats.mode(x)[0][0]
-#                most_freq_base = most_freq_finder(query_seqs)
-#                orf_patient_seq[herv].append(most_freq_base)
-#                mismatch = ''
-#                if herv_seq[pos_idx] != most_freq_base:
-#                    mismatch = "Mismatch"
-#                print("{}\t{}\t{}\t{}".format(pos[0], herv_seq[pos_idx], most_freq_base, mismatch))
-#                most_freq_base_freq = float(query_seqs.count(most_freq_base))/len(query_seqs)
-#                if float(most_freq_base_freq) < 0.80:
-#                    orf_het_sites[herv].append(pos[0])
-#                    print("WARNING: Possible germline mutation!")
-#                    print("{}\t{}\t{}\t{}\t{}".format(pos[0], herv_seq[pos_idx], most_freq_base, query_seqs.count(most_freq_base)/len(query_seqs), counts))
-#
-#
-#        orf_rna_coverage[herv] = "{},{}".format(covered_pos[0]+1, covered_pos[-1]+1)
-#        print(herv_seq)
-#        print(''.join(orf_patient_seq[herv]))
-#        print(orf_het_sites[herv])
-#        print(orf_rna_coverage[herv])
-#        
-#
-#    for id, seq in expressed_hervs_seqs.items():
-#        aa_seq = Seq(''.join(orf_patient_seq[id])).translate(to_stop=True)
-#        expressed_hervs_aas["{}".format(id)] = aa_seq
-#
-#    with open(args.output, 'w') as ofo:
-#        for k, v in expressed_hervs_aas.items():
-#            header = "MD5:{} NAME:{} TUMOR_CPM:{} NORM_CPM:{} DELTA:{} TPM:{} NUMREADS:{} RNA_COVERAGE_RANGE:{} POTENTIAL_GERMLINE_HETS:{}".format(hashlib.md5(str(k).encode('utf-8')).hexdigest()[:16], k, expressed_hervs_metadata[k]['tumor_cpm'], expressed_hervs_metadata[k]['norm_cpm'], expressed_hervs_metadata[k]['delta'], expressed_hervs_metadata[k]['tpm'], expressed_hervs_metadata[k]['numreads'], orf_rna_coverage[k], ','.join([str(x) for x in orf_het_sites[k]]))
-#            ofo.write(">{}\n{}\n".format(header, v))
-#
-#    with open(args.nt_output, 'w') as ofo:
-#        for k, v in expressed_hervs_aas.items():
-#            header = "MD5:{}".format(hashlib.md5(str(k).encode('utf-8')).hexdigest()[:16])
-#            ofo.write(">{}\n{}\n".format(header, ''.join(orf_patient_seq[k])))
 
 def complement(i):
     comp = {'a': 't',
@@ -3589,6 +2629,10 @@ def complement(i):
 def add_erv_metadata(args):
     """
     """
+
+    peptide_to_foreign = parse_ag_foreignness(args.ag_foreignness)
+    peptide_to_dissim = parse_ag_dissimilarity(args.ag_dissimilarity)
+    peptide_allele_to_stability = parse_netmhcstabpan(args.binding_stabilities)
 
     het_sites = {}
 
@@ -3758,6 +2802,9 @@ def add_erv_metadata(args):
                 header[8] = 'score_ba'
                 header[9] = 'percent_rank_ba'
                 header[10] = 'binding_affinity'
+                header.extend(['foreignness'])
+                header.extend(['dissimilarity'])
+                header.extend(['binding_stability'])
                 header.extend(['geve_orf'])
                 header.extend(['tumor_cpm'])
                 header.extend(['norm_cpm'])
@@ -3788,6 +2835,14 @@ def add_erv_metadata(args):
                 if 'WB' in line:
                     line.remove('<=')
                     line.remove('WB')
+                foreign = 'NA'
+                dissim = 'NA'
+                try: 
+                    foreign = peptide_to_foreign[line[3]]
+                    dissim = peptide_to_dissim[line[3]]
+                except:
+                    pass
+                binding_stability = peptide_allele_to_stability["{}-{}".format(line[2], line[3])]
                 tumor_cpm = checksum_to_meta_map[line[5]]['TUMOR_CPM']
                 norm_cpm = checksum_to_meta_map[line[5]]['NORM_CPM']
                 delta = checksum_to_meta_map[line[5]]['DELTA']
@@ -3798,6 +2853,9 @@ def add_erv_metadata(args):
                 #print(hsap_external_data[name])
                 viral_blast = hsap_external_data[name]['Viral_BLAST']
                 retrotector = hsap_external_data[name]['RetroTector']
+                line.extend([foreign])
+                line.extend([dissim])
+                line.extend([binding_stability])
                 line.extend([name])
                 line.extend([tumor_cpm])
                 line.extend([norm_cpm])
@@ -3866,10 +2924,6 @@ def add_erv_metadata(args):
                     peptide_start = int(hsap_external_data[name]['end']) - int(start_codon_idx)
                     peptide_stop = peptide_start - len(line[3])
                    
-
-#                    rna_coverage_start = int(checksum_to_meta_map[line[5]]['POTENTIAL_GERMLINE_HETS'].strip('(').strip(')').split(',')[1])
-#                    rna_coverage_stop = int(checksum_to_meta_map[line[5]]['POTENTIAL_GERMLINE_HETS'].strip('(').strip(')').split(',')[0])
-
                     has_het = 0
                     chr = name.split('.')[1]
                     if chr in het_sites.keys():
@@ -3915,6 +2969,7 @@ def add_erv_metadata(args):
 
     return output_lines
 
+
 def expressed_self_genes(args):
     """
     """
@@ -3934,7 +2989,7 @@ def expressed_self_genes(args):
     print("tx_thresshold: {}".format(tx_threshold))
     print("# of expressed transcripts: {}".format(len(expressed_txids)))
     print("Some expressed transcripts: {}".format(expressed_txids[:10]))
-    #print("# of filtered transcripts: {}".format(len(filtered_records)))
+    print("Some genes: {}".format(gene_list[:10]))
 
 
     tx_to_gene = {}
@@ -3943,8 +2998,8 @@ def expressed_self_genes(args):
             line = line.split('\t')
             if len(line) > 3 and line[2] == 'transcript' and 'gene_name' in str(line) and (re.search('transcript_type "protein_coding"', '\t'.join(line)) or re.search('transcript_biotype "protein_coding"', '\t'.join(line))):
                 gene_name = str(line).split('gene_name "')[1].split('"')[0]
-                tx_id = str(line).split('transcript_id "')[1].split('"')[0].split('.')[0]
-                print("{}\t{}".format(gene_name, tx_id))
+                tx_id = str(line).split('transcript_id "')[1].split('"')[0]
+#                print("{}\t{}".format(gene_name, tx_id))
                 tx_to_gene[tx_id] = gene_name
 
 
@@ -4041,186 +3096,17 @@ def make_self_antigen_peptides(args):
                 print(cds)
                 expressed_self_tx_seq += expressed_selfs_exon_seqs[cds]
             expressed_self_tx_seq = str(expressed_self_tx_seq.reverse_complement())
-#        if expressed_selfs_tx_metadata[expressed_self]['strand'] == '-':
         print(expressed_self_tx_seq)
         expressed_selfs_nts[expressed_self] = expressed_self_tx_seq
         expressed_selfs_utr_buffers[expressed_self] = utr_buffer
                 
-   
-     
-        
-#    with open(args.self_seqs) as eso:
-#        for line in eso.readlines():
-#            expressed_selfs.append(line.rstrip())
-
-#    tx_to_aa = load_tx_aas(args)
-#    tx_to_aa_trunc = {k.partition('.')[0]:v for k, v in tx_to_aa.items()}
-
-
-    # Need to incorporate the germline variants here.
-
-#    for expressed_self in expressed_selfs:
-#        tx = expressed_self.partition(':')[2]
-#        if tx in tx_to_aa_trunc.keys():
-#            aa_seq = tx_to_aa_trunc[tx]
-#            expressed_self_seqs[tx] = aa_seq
-
-#    relevant_germline_vars = {}
-
-    # Probably want to prefill relevant_germline_vars with the appropriate self
-    # transcripts. Loop through missense and indels and apply to transcripts where appropriate.
-    #vcf_reader = vcf.Reader(open(args.vcf), 'r', compressed=True)
-    #vcf_reader = vcf.Reader(open(args.germline_vcf), 'r')
-
-    # Extract missense and indels. Safe using missense, conservative indels,
-    # and disruptive indels. I would be cautious about using frameshift
-    # variants.
-
-    # Best bet here is to use extract_missense_snvs(),
-    # extract_conservative_inframe_indels(), extract_disruptive_indels().
-    # Probably want to use extrace_frameshift_indels() just to allow for
-    # filtering of selfs with missenses.
-
-#    print("Extracting missense variants from germline VCF...")
-#    missense_snvs = extract_missense_snvs(args.germline_vcf)
-#    print(len(missense_snvs.keys()))
-#    print("Extracting conservative inframe indels from germline VCF...")
-#    conserv_inframe_indels = extract_conservative_inframe_indels(args.germline_vcf)
-#    print(len(conserv_inframe_indels.keys()))
-#    print("Extracting disruptive inframe indels from germline VCF...")
-#    disrupt_inframe_indels = extract_disruptive_inframe_indels(args.germline_vcf)
-#    print(len(disrupt_inframe_indels.keys()))
-#    print("Extracting frameshift indels from germline VCF...")
-#    frameshift_indels = extract_frameshift_indels(args.germline_vcf)
-#    print(len(frameshift_indels.keys()))
-
-#    print("Number of expressed self-antigen transcripts: {}".format(len(expressed_self_seqs.keys())))
-
-#    frameshift_transcripts = [record['transcript'] for entry, record in frameshift_indels.items()]
-#    print(len(frameshift_transcripts))
-
-#    for self_tx in expressed_self_seqs.keys():
-#        if self_tx in frameshift_transcripts:
-#            del(expressed_self_seqs[self_tx])
-
-#    print("Number of expressed self-antigen transcripts without frameshifts: {}".format(len(expressed_self_seqs.keys())))
-
-#    all_vars = dict(missense_snvs, **conserv_inframe_indels)
-#    all_vars = dict(all_vars, **disrupt_inframe_indels)
-
-#    print(len(all_vars.keys()))
-
-#    for entry, record in all_vars.items():
-#        if record['transcript'] in expressed_self_seqs.keys() or record['transcript'].split('.')[0] in expressed_self_seqs.keys():
-#            if record['transcript'] not in relevant_germline_vars.keys():
-#                relevant_germline_vars[record['transcript'].split('.')[0]] = [record]
-#            else:
-#                relevant_germline_vars[record['transcript'].split('.')[0]].append(record)
-
-#    print(relevant_germline_vars)
-
-
     selfs_peps = {}
     for self, self_seq in expressed_selfs_nts.items():
         seq = Seq(str(self_seq))
         pep_seq = seq.translate(to_stop=True)
         if pep_seq.startswith('M'):
             selfs_peps[self] = pep_seq
-#        if expressed_self in relevant_germline_vars.keys():
-#            relevant_vars = relevant_germline_vars[expressed_self]
-#            print("{}\n{}".format(expressed_self, relevant_vars))
-#            if not(relevant_vars):
-#                print("No relevant variants, emitting...")
-#                tx_to_peps[expressed_self] = expressed_self_seq
-#
-#            indels = [i for i in relevant_vars if 'aa3_change' in i.keys()]
-#            if not indels:
-#                print("No indels detected. Proceeding with missense variants.")
-#                # TODO: Current code assumes homozygosity of germline variants
-#                # which is a poor assuming. Check the GT from the record.
-#                germ_aa = list(str(expressed_self_seq))
-#                germline_aas = [germ_aa]
-#                for record in relevant_vars:
-#                    print(record)
-#                    if len(germ_aa) != int(record['aa_len']):
-#                        print("transcript {} shows different lengths between amino acid fasta ({}) and snpEff annotations! ({})".format(tx, record['aa_len'], len(germ_aa)))
-#                        continue
-#                    aa_pos = int(record['aa_pos']) - 1
-#                    germ_aa[aa_pos] = record['alt_aa']
-#                    print("{}".format(expressed_self_seq[aa_pos-5:aa_pos+5]))
-#                    print("{}".format(''.join(germ_aa)[aa_pos-5:aa_pos+5]))
-#                    #print(record['meta'].FORMAT['GT'])
-#                print("Applied all missense variants, emitting...")
-#                tx_to_peps[expressed_self] = expressed_self_seq
-#            else:
-#                pass
-                # This will need to be revamped. The mechanism of how indels
-                # are handled right now is a bit complex and needs to be
-                # improved before I have faith in this.
-#                seq_windows = []
-#                window = 21
-#                step = 8
-#                capture_index = 0
-#                for pos_idx in range(len(expressed_self_seq)):
-#                    if pos_idx == capture_index:
-#                        seq_windows.append([str(expressed_self_seq[pos_idx:(pos_idx + window)]), pos_idx+ 1, pos_idx + window + 1])
-#                        capture_index += step
-#
-#                for seq_window in seq_windows:
-#                    print("Seq window: {}".format(seq_window))
-#                    seq_window_start = seq_window[1]
-#                    seq_window_stop = seq_window[2]
-#                    found_vars = 0
-#                    for relevant_var in relevant_vars:
-#                        print(relevant_var)
-#                        if 'aa_pos' in record.keys():
-#                            relevant_var_pos = record['aa_pos']
-#                        elif re.search("del$", record['aa3_change']):
-#                            del_rec_aa = record['aa3_change'].strip('del')
-#                            start_pos_aa = int(del_rec_aa.split('_')[0][3:]) - 1
-#                            start_aa3 = del_rec_aa.split('_')[0][:3]
-#                            start_aa = seq1(start_aa3)
-#                            stop_pos_aa = 0
-#                            stop_aa3 = 'foo'
-#                            stop_aa = 'foo'
-#                            # Handling single amino acid deletions
-#                            if re.search('_', del_rec_aa):
-#                                stop_pos_aa = int(del_rec_aa.split('_')[1][3:]) - 1
-#                                stop_aa3 = del_rec_aa.split('_')[1][:3]
-#                                stop_aa = seq1(stop_aa3)
-#                             else:
-#                                 stop_pos_aa = start_pos_aa
-#                                 stop_aa3 = start_aa3
-#                                 stop_aa = start_aa
-#                        elif
-#                        print("Relevant var pos: {}".format(relevant_var_pos))
-#                        if int(relevant_var_pos) > int(seq_window_start) and int(relevant_var_pos) < int(seq_window_stop):
-#                            found_vars = 1
-#                            print("Var is within window.")
-#                           # print(seq_window)
-#                           # print(relevant_var)
-#                        relative_var_pos = int(relevant_var_pos) - int(seq_window_start)
-#                        print(relative_var_pos)
-#                        new_seq = list(seq_window[0])
-#                        print(new_seq)
-#                        if new_seq[relative_var_pos] != relevant_var[2]:
-#                            print("The reference amino acid isn't what's expected.")
-#                        new_seq[relative_var_pos] = relevant_var[3]
-#                        if relevant_var[-1] in ['0/1', '0|1']:
-#                            print("Variant is heterozygote, grabbing both genotypes.")
-#                            tx_to_peps["{}_{}_het_alt0".format(expressed_self, seq_window_start)] = seq_window[0]
-#                            tx_to_peps["{}_{}_het_alt1".format(expressed_self, seq_window_start)] = ''.join(new_seq)
-#                        if relevant_var[-1] in ['1/1', '1|1']:
-#                            tx_to_peps["{}_{}_hom_alt".format(expressed_self, seq_window_start)] = ''.join(new_seq)
-#                        print("old seq: {}\nnew_seq: {}".format(seq_window[0], ''.join(new_seq)))
-#                if found_vars == 0:
-#                    print("{}\t{}".format(expressed_self, expressed_self_seq))
-#                    tx_to_peps["{}_{}".format(expressed_self, seq_window_start)] = seq_window[0]
-#        else:
-#            print("No variants")
-#            # If there are no applicable variants, simply emit the reference sequence.
-#            tx_to_peps[expressed_self] = expressed_self_seq
-#
+
     with open(args.output, 'w') as ofo:
         for expressed_self, expressed_self_seq in sorted(selfs_peps.items()):
             ofo.write(">MD5:{} NAME:{}\n{}\n".format(hashlib.md5("{}".format(expressed_self).encode('utf-8')).hexdigest()[:16], expressed_self, expressed_self_seq))
@@ -4234,6 +3120,11 @@ def make_self_antigen_peptides(args):
 def add_self_antigen_metadata(args):
     """
     """
+    peptide_to_foreign = parse_ag_foreignness(args.ag_foreignness)
+    peptide_to_dissim = parse_ag_dissimilarity(args.ag_dissimilarity)
+    peptide_allele_to_stability = parse_netmhcstabpan(args.binding_stabilities)
+
+
     tx_to_tpm = {}
     tx_to_log2tpm = {}
     tx_to_uqlog2tpm = {}
@@ -4246,7 +3137,7 @@ def add_self_antigen_metadata(args):
                 tx_col_idx = line.split('\t').index('Name')
             else:
                 line = line.split('\t')
-                tx_to_tpm[line[tx_col_idx].split('.')[0]] = float(line[tpm_col_idx])
+                tx_to_tpm[line[tx_col_idx]] = float(line[tpm_col_idx])
 
     for k,v in tx_to_tpm.items():
         tx_to_log2tpm[k] = np.log2(v + 1)
@@ -4269,29 +3160,13 @@ def add_self_antigen_metadata(args):
         print(tx)
         md5_to_tx[md5] = tx
       
-
-    
-
-#    tx_to_tpm = {}
-#    with open(args.quants) as qfo:
-#        tpm_col_idx = ''
-#        tx_col_idx = ''
-#        for line_idx, line in enumerate(qfo.readlines()):
-#            if line_idx == 0:
-#                print(line)
-#                tpm_col_idx = line.split('\t').index('TPM')
-#                tx_col_idx = line.split('\t').index('Name')
-#            else:
-#                line = line.split('\t')
-#                tx_to_tpm[line[tx_col_idx].split('.')[0]] = line[tpm_col_idx]
-
     tx_to_gene = {}
     with open(args.gtf) as gtfo:
         for line in gtfo.readlines():
             line = line.split('\t')
             if len(line) > 3 and line[2] == 'transcript' and line[1] != 'geve':
                 gene_name = str(line).split('gene_name "')[1].split('"')[0]
-                tx_id = str(line).split('transcript_id "')[1].split('"')[0].partition('.')[0]
+                tx_id = str(line).split('transcript_id "')[1].split('"')[0]
                 tx_to_gene[tx_id] = gene_name
 
     additional_notes = {}
@@ -4317,7 +3192,7 @@ def add_self_antigen_metadata(args):
                     header.remove('BindLevel')
                 except:
                     pass
-                header.extend(['gene_name', 'transcript_identifier', 'tpm', 'log2(tpm+1)', 'uq(log2(tpm+1))', 'additional_notes'])
+                header.extend(['foreignness', 'dissimilarity', 'binding_stability', 'gene_name', 'transcript_identifier', 'tpm', 'log2(tpm+1)', 'uq(log2(tpm+1))', 'additional_notes'])
                 header.insert(0, 'antigen_source')
                 header = header[:5] + header[11:]
                 header[1] = 'pos'
@@ -4342,15 +3217,23 @@ def add_self_antigen_metadata(args):
                 line.insert(0, 'Self-Antigen')
                 line = line[:5] + line[11:]
                 tx_id = line[5]
+                foreign = 'NA'
+                dissim = 'NA'
+                try:
+                    foreign = peptide_to_foreign[line[3]]
+                    dissim = peptide_to_dissim[line[3]]
+                except:
+                    pass
+                binding_stability = peptide_allele_to_stability["{}-{}".format(line[2], line[3])]
                 if re.search('MD5', line[5]):
                     tx_id = md5_to_tx[line[5]]
                 gene_name = tx_to_gene[tx_id]
                 # The below line is simply for TCGA-LAML self-antigen filtering
                 # and should be removed eventually.
                 tpm = tx_to_tpm[tx_id]
-                log2tpm = tx_to_log2tpm[tx_id.split('.')[0]]
-                uqlog2tpm = tx_to_uqlog2tpm[tx_id.split('.')[0]]
-                line.extend([gene_name, tx_id,str(tpm), str(log2tpm), str(uqlog2tpm), additional_notes[gene_name]])
+                log2tpm = tx_to_log2tpm[tx_id]
+                uqlog2tpm = tx_to_uqlog2tpm[tx_id]
+                line.extend([foreign, dissim, binding_stability, gene_name, tx_id,str(tpm), str(log2tpm), str(uqlog2tpm), additional_notes[gene_name]])
                 output_lines.append(line)
 
     with open(args.output, 'w') as ofo:
@@ -4376,7 +3259,6 @@ def filter_viral_cds(args):
             if line.startswith('>'):                                                                
                 line = line.rstrip('\n').lstrip('>')                                                
                 raw_refs.append(line.split(' ')[0])                                                 
-#    viral_counts = {raw_refs[i]:raw_counts[i] for i in range(len(raw_refs)) if int(raw_counts[i]) > int(args.min_threshold)}
     all_viral_cds_counts = {raw_refs[i]:int(raw_counts[i]) for i in range(len(raw_refs)) if int(raw_counts[i]) > 0} 
     print(all_viral_cds_counts)
 
@@ -4404,7 +3286,6 @@ def filter_virdetect_by_counts(args):
             if line.startswith('>'):
                 line = line.rstrip('\n').lstrip('>')
                 raw_refs.append(line.split(' ')[0])
-#    viral_counts = {raw_refs[i]:raw_counts[i] for i in range(len(raw_refs)) if int(raw_counts[i]) > int(args.min_threshold)}
     all_viral_counts = {raw_refs[i]:int(raw_counts[i]) for i in range(len(raw_refs))}
     pprint(all_viral_counts)
     threshold = ''
@@ -4425,134 +3306,9 @@ def filter_virdetect_by_counts(args):
 def make_viral_peptides(args):
     """
     """
-#    alns = pysam.AlignmentFile(args.viral_bam, 'rb')
-#
-#    expressed_viruses_quant = {}
-#    virus_to_contig = {}
-#    viral_peptide_seqs = {}
-#    expressed_viral_proteins = {}
-#
-#    with open(args.expressed_viruses) as fo:
-#        for line_idx, line in enumerate(fo.readlines()):
-#            if line_idx != 0:
-#                line = line.rstrip().split('\t')
-#                virus_to_contig[line[0].split('|')[3]] = line[0]
-#                expressed_viruses_quant[line[0].split('|')[3]] = line[1]
-#
     patient_nts = {}
-#    virus_to_cds = {}
-#    cds_to_virus = {}
-#
     for seq_record in SeqIO.parse(args.fasta, "fasta"):
-#        map_info = seq_record.description.split('|')[1].split(' ')[0]
-#        virus_id, unneeded, protein_id = map_info.partition('_cds_')
-#        protein_id = re.sub(r'_1$', '', protein_id)
-#
         patient_nts[seq_record.description.split()[0].split('_cds_')[1][:-2]] = seq_record.seq
-
-#        if virus_id not in virus_to_cds.keys():
-#            virus_to_cds[virus_id] = [protein_id]
-#        else:
-#            virus_to_cds[virus_id].append(protein_id)
-#
-#        cds_to_virus[protein_id] = virus_id
-#
-#    cds_coords = {}
-#
-#    with open(args.viral_gff) as fo:
-#        for line in fo.readlines():
-#            line = line.rstrip().split('\t')
-#            meta = line[-1]
-#            protein_id = {x.split('=')[0]: x.split('=')[1] for x in meta.split(';')}['protein_id']
-#            cds_coords[protein_id] = (line[3], line[4])
-#
-#
-#
-##    with open(args.fasta) as fo:
-##        for line in fo.readlines():
-##            if line.startswith('>'):
-##                line = line.split('|')[1].split(' ')[0]
-##                virus_id, unneeded, protein_id = line.partition('_cds_')
-##                protein_id = re.sub(r'_1$', '', protein_id)
-##                if virus_id not in virus_to_cds.keys():
-##                    virus_to_cds[virus_id] = [protein_id]
-##                else:
-##                    virus_to_cds[virus_id].append(protein_id)
-#
-##    for seq_record in SeqIO.parse(args.viral_pep_ref, "fasta"):
-##        peptide_id = seq_record.description.split(' ')[0]
-##        viral_peptide_seqs[peptide_id] = seq_record.seq
-#
-#    expressed_viral_proteins = {}
-#
-#    for expressed_virus in expressed_viruses_quant.keys():
-#        print(expressed_virus)
-#        if expressed_virus in virus_to_cds.keys():
-#             for protein in virus_to_cds[expressed_virus]:
-#                expressed_viral_proteins[protein] = protein_nts[protein]
-#        else:
-#            print("Cannot find virus {} in cds data.".format(expressed_virus))
-#
-#    print(expressed_viral_proteins)
-#
-#    # evp = expressed viral protein
-#    evp_rna_coverage = {}                                                                          
-#    evp_het_sites = {}                                                                             
-#    evp_patient_seq = {}    
-#
-#
-#    for evp, evp_nts in expressed_viral_proteins.items():
-#        evp_contig = virus_to_contig[cds_to_virus[evp]]
-#        print(evp_contig)
-#        evp_start = int(cds_coords[evp][0])
-#        evp_stop = int(cds_coords[evp][1])
-#        print(evp_start, evp_stop)
-#        evp_per_pos_coverage_nt_level = alns.count_coverage(evp_contig, evp_start, evp_stop)
-#        evp_per_pos_coverage_total = []
-#        for base in evp_per_pos_coverage_nt_level[0]:
-#            evp_per_pos_coverage_total.append(0)
-#        for base in evp_per_pos_coverage_nt_level:
-#            for pos_idx, count in enumerate(base):
-#                evp_per_pos_coverage_total[pos_idx] = evp_per_pos_coverage_total[pos_idx] + count
-#        print(evp_per_pos_coverage_total)
-#        evp_coverage_avg = float(sum(evp_per_pos_coverage_total))/len(evp_per_pos_coverage_total)
-#        print(evp_coverage_avg)
-#
-#        # 25x coverage is an abritrary threshold for now.
-#        if evp_coverage_avg >= 25:
-#            evp_patient_seq[evp] = []                                                                  
-#            evp_het_sites[evp] = []  
-#            evp_seq = evp_nts
-#            for i in alns.pileup(contig=vpro_contig):
-#                print(i)
-#            tmp_info = pileup_truncated(alns, evp_contig, evp_start, evp_stop)                    
-#            pileup_info = [(x.reference_pos, [i for i in x.get_query_sequences() if i]) for x in tmp_info]
-#                                                                                                    
-#            covered_pos = []                                                                            
-#            for pos_idx, pos in enumerate(pileup_info):                                                 
-#                                                                                                    
-#                query_seqs = [x.lower() for x in pos[1]]                                                
-#                print(query_seqs)
-#                if not query_seqs:                                                                      
-#                    evp_patient_seq[evp].append(evp_nts[pos_idx])                                     
-#                if query_seqs:                                                                          
-#                    covered_pos.append(pos[0])                                                          
-#                    counts= {x:query_seqs.count(x) for x in query_seqs}                                 
-#                    most_freq_finder = lambda x: scipy.stats.mode(x)[0][0]                              
-#                    most_freq_base = most_freq_finder(query_seqs)                                       
-#                    evp_patient_seq[evp].append(most_freq_base)                                        
-#                    mismatch = ''                                                                       
-#                    if vpro_seq[pos_idx] != most_freq_base:                                             
-#                        mismatch = "Mismatch"                                                           
-#                    print("{}\t{}\t{}\t{}".format(pos[0], herv_seq[pos_idx], most_freq_base, mismatch)) 
-#                    most_freq_base_freq = float(query_seqs.count(most_freq_base))/len(query_seqs)       
-#                    if float(most_freq_base_freq) < 0.80:                                               
-#                        evp_het_sites[evp].append(pos[0])                                              
-#                        print("WARNING: Possible germline mutation!")                                   
-#                        print("{}\t{}\t{}\t{}\t{}".format(pos[0], herv_seq[pos_idx], most_freq_base, query_seqs.count(most_freq_base)/len(query_seqs), counts))
-#
-#            evp_rna_coverage[evp] = "{},{}".format(covered_pos[0]+1, covered_pos[-1]+1)                
-#                             
 
     patient_aas = {}                                                                      
                                                                                                     
@@ -4565,15 +3321,14 @@ def make_viral_peptides(args):
         for id, seq in patient_aas.items():
             ofo.write(">{}\n{}\n".format(id.partition('_1:1')[0], seq))
     
-#    with open(args.nt_output, 'w') as ofo:
-#        for id, seq in patient_nts:
-#            ofo.write(">{}\n{}\n".format(id, seq))
-
 
 def add_viral_metadata(args):
     """
     """
-#    expressed_viruses = {}
+    peptide_to_foreign = parse_ag_foreignness(args.ag_foreignness)
+    peptide_to_dissim = parse_ag_dissimilarity(args.ag_dissimilarity)
+    peptide_allele_to_stability = parse_netmhcstabpan(args.binding_stabilities)
+
     cds_to_virus = {}
 
     with open(args.viral_cds_ref) as fo:
@@ -4583,13 +3338,6 @@ def add_viral_metadata(args):
                 virus_id, trash, protein_id = line.partition('_cds_')
                 protein_id = re.sub(r'_1$', '', protein_id)
                 cds_to_virus[protein_id] = virus_id
-
-#    with open(args.viral_quants) as fo:
-#        for line_idx, line in enumerate(fo.readlines()):
-#            line = line.rstrip().split('\t')
-#            expressed_viruses[line[0].split('_cds_')[1][:-2]] = line[1]
-
-#    print(expressed_viruses)
 
     output_lines = []
     header = []
@@ -4623,8 +3371,7 @@ def add_viral_metadata(args):
                     header.remove('BindLevel')
                 except:
                     pass
-#                header.extend(['virus_protein_identifier', 'virus_protein_name', 'virus_identifier', 'virus_name', 'rna_read_count'])
-                header.extend(['virus_protein_identifier', 'virus_protein_name', 'virus_identifier', 'virus_name'])
+                header.extend(['foreignness', 'dissimilarity', 'binding_stability', 'virus_protein_identifier', 'virus_protein_name', 'virus_identifier', 'virus_name'])
                 header[1] = 'pos'
                 header[2] = 'mhc_allele'
                 header[3] = 'peptide'
@@ -4647,6 +3394,14 @@ def add_viral_metadata(args):
                 line.insert(0, 'Virus')
                 line = line[:5] + line[11:]
                 #This should be extended to replace and _[0-9] to .[0-9]
+                foreign = 'NA'
+                dissim = 'NA'
+                try:
+                    foreign = peptide_to_foreign[line[3]]
+                    dissim = peptide_to_dissim[line[3]]
+                except:
+                    pass
+                binding_stability = peptide_allele_to_stability["{}-{}".format(line[2], line[3])]
                 orig_index = line[5].rfind('_')
                 virus_cds = "NA"
                 virus_id = "NA"
@@ -4656,17 +3411,16 @@ def add_viral_metadata(args):
                 virus_cds = line[5][:orig_index] + '.' + line[5][orig_index+1:]
                 print(virus_cds)
                 virus_id = cds_to_virus[virus_cds]
-#                read_counts = expressed_viruses[virus_cds]
                 viral_name = viral_names[virus_cds]
                 viral_protein_name = viral_protein_names[virus_cds]
-#                line.extend([virus_cds, viral_protein_name, virus_id, viral_name, read_counts])
-                line.extend([virus_cds, viral_protein_name, virus_id, viral_name])
+                line.extend([foreign, dissim, binding_stability, virus_cds, viral_protein_name, virus_id, viral_name])
                 output_lines.append(line)
 
     with open(args.output, 'w') as ofo:
         ofo.write("{}\n".format('\t'.join(header)))
         for line in output_lines:
             ofo.write("{}\n".format('\t'.join(line)))
+
 
 def make_fusion_peptides_context(args):
     """
@@ -4680,8 +3434,7 @@ def make_fusion_peptides_context(args):
     print("Fusion transcripts: {}".format(fusion_txs))
 
     exon_seqs = {}
-#    for seq_record in SeqIO.parse(glob(os.path.join(args.var_tx_seqs, '*{}_{}.normal.fa'.format(record['transcript'].partition('.')[0], record_coords)))[0], "fasta"):
-    for seq_record in SeqIO.parse(args.exons_fasta, "fasta"):#glob(os.path.join(args.var_tx_seqs, '*{}_{}.normal.fa'.format(record['transcript'].partition('.')[0], record_coords)))[0], "fasta"):
+    for seq_record in SeqIO.parse(args.exons_fasta, "fasta"):
         exon_seqs[seq_record.description] = seq_record.seq
    
     fusion_txs_metadata = {} 
@@ -4783,10 +3536,6 @@ def make_fusion_peptides_context(args):
                         full_pep_seq = line[header_map['FUSION_TRANSL']]
                     if line[header_map['PROT_FUSION_TYPE']] == 'INFRAME':
                         print('inframe')
-#                        peptide = line[header_map['FUSION_TRANSL']][start_prot - 8:start_prot + 8]
-#                        peptide_context = line[header_map['FUSION_TRANSL']][start_prot - 16:start_prot + 16]
-#                        nuc_context = line[header_map['FUSION_CDS']][int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - nuc_sub:int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) + nuc_sub]
-#                        nuc_seq = line[header_map['FUSION_CDS']][int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - (nuc_sub - 24):int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) + (nuc_sub - 24)]
                         peptide = full_pep_seq[start_prot - 8:start_prot + 8]
                         peptide_context = full_pep_seq[start_prot - 16:start_prot + 16]
                         nuc_context = full_nuc_seq[int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - nuc_sub:int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) + nuc_sub]
@@ -4805,10 +3554,6 @@ def make_fusion_peptides_context(args):
                             valid_fusions[line[header_map['#FusionName']]]['nuc_seq'] = nuc_seq
                     elif line[header_map['PROT_FUSION_TYPE']] == 'FRAMESHIFT':
                         print('frameshift')
-#                        init_peptide = line[header_map['FUSION_TRANSL']][start_prot - 8:]
-#                        init_peptide_context = line[header_map['FUSION_TRANSL']][start_prot - 16:]
-#                        init_nuc_context = line[header_map['FUSION_CDS']][int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - nuc_sub:]
-#                        init_nuc_seq = line[header_map['FUSION_CDS']][int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - 24:]
                         init_peptide = full_pep_seq[start_prot - 8:]
                         init_peptide_context = full_pep_seq[start_prot - 16:]
                         init_nuc_context = full_nuc_seq[int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - nuc_sub:]
@@ -4844,121 +3589,12 @@ def make_fusion_peptides_context(args):
             # Context sequences are too long.
             ofo.write(">{} NUCLEOTIDE_CONTEXT:{} PEPTIDE_CONTEXT:{}\n{}\n".format(valid_fusion_id, 'N/A', 'N/A', meta['nuc_seq']))
 
-def make_fusion_peptides(args):
-     """
-     """
-     valid_fusions = {}
-     with open(args.fusions) as fo:
-         header = []
-         header_map = {}
-         for line_idx, line in enumerate(fo.readlines()):
-             line = line.rstrip().split('\t')
-             if line_idx  == 0:
-                header_map = {j:i for i, j in enumerate(line)}
-             else:
-                 if line[header_map['FUSION_TRANSL']] != '.':
-                     start_prot = 0
-                     nuc_sub = 48
-                     print(line[header_map['#FusionName']])
-                     print(line[header_map['CDS_LEFT_RANGE']])
-                     print(line[header_map['CDS_LEFT_RANGE']].split('-')[1])
-                     valid_fusions[line[header_map['#FusionName']]] = {}
-                     if float(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) % 3 == 0:
-                         print("Direct translate")
-                         start_prot = int(int(int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]))/3)
-                     elif (float(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - 1) % 3 == 0:
-                         print("Minus one")
-                         start_prot = int(int(int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - 1)/3)
-                         nuc_sub = nuc_sub + 1
-                     elif (float(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - 2) % 3 == 0:
-                         print("Minus two")
-                         start_prot = int(int(int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - 2)/3)
-                         nuc_sub = nuc_sub + 2
-                     else:
-                         print("No luck")
-                     print(start_prot)
-                     if line[header_map['PROT_FUSION_TYPE']] == 'INFRAME':
-                         print('inframe')
-                         peptide = line[header_map['FUSION_TRANSL']][start_prot - 8:start_prot + 8]
-                         peptide_context = line[header_map['FUSION_TRANSL']][start_prot - 16:start_prot + 16]
-                         nuc_context = line[header_map['FUSION_CDS']][int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - nuc_sub:int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) + nuc_sub]
-                         nuc_seq = line[header_map['FUSION_CDS']][int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - (nuc_sub - 24):int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) + (nuc_sub - 24)]
-                         print("peptide: {}".format(peptide))
-                         print("peptide_context: {}".format(peptide_context))
-                         print("nuc_context: {}".format(nuc_context))
-                         if not(re.search('\*', peptide)):
-                             valid_fusions[line[header_map['#FusionName']]]['peptide'] = peptide
-                             valid_fusions[line[header_map['#FusionName']]]['peptide_context'] = peptide_context
-                             valid_fusions[line[header_map['#FusionName']]]['nuc_context'] = nuc_context
-                             valid_fusions[line[header_map['#FusionName']]]['nuc_seq'] = nuc_seq
-                         else:
-                             valid_fusions[line[header_map['#FusionName']]]['peptide'] = peptide
-                             valid_fusions[line[header_map['#FusionName']]]['peptide_context'] = peptide_context
-                             valid_fusions[line[header_map['#FusionName']]]['nuc_seq'] = nuc_seq
-                     elif line[header_map['PROT_FUSION_TYPE']] == 'FRAMESHIFT':
-                         print('frameshift')
-                         init_peptide = line[header_map['FUSION_TRANSL']][start_prot - 8:]
-                         init_peptide_context = line[header_map['FUSION_TRANSL']][start_prot - 16:]
-                         init_nuc_context = line[header_map['FUSION_CDS']][int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - nuc_sub:]
-                         init_nuc_seq = line[header_map['FUSION_CDS']][int(line[header_map['CDS_LEFT_RANGE']].split('-')[1]) - 24:]
-                         print(init_peptide)
-                         if re.search('\*', init_peptide):
-                             stop_codon = init_peptide.index('*')
-                             peptide = init_peptide[:stop_codon]
-                             peptide_context = init_peptide_context[:stop_codon+8]
-                             valid_fusions[line[header_map['#FusionName']]]['peptide'] = peptide
-                             valid_fusions[line[header_map['#FusionName']]]['peptide_context'] = peptide_context
-                             valid_fusions[line[header_map['#FusionName']]]['nuc_context'] = init_nuc_context
-                             valid_fusions[line[header_map['#FusionName']]]['nuc_seq'] = init_nuc_seq
-                         else:
-                             valid_fusions[line[header_map['#FusionName']]]['peptide'] = init_peptide
-                             valid_fusions[line[header_map['#FusionName']]]['peptide_context'] = init_peptide_context
-                             valid_fusions[line[header_map['#FusionName']]]['nuc_context'] = init_nuc_context
-                             valid_fusions[line[header_map['#FusionName']]]['nuc_seq'] = init_nuc_seq
-
-     with open(args.output, 'w') as ofo:
-         for valid_fusion_id in valid_fusions.keys():
-             print(valid_fusion_id)
-             meta = valid_fusions[valid_fusion_id]
-             print(meta)
-             # Context sequences are too long.
-             ofo.write(">{} NUCLEOTIDE_CONTEXT:{} PEPTIDE_CONTEXT:{}\n{}\n".format(valid_fusion_id, 'N/A', 'N/A', meta['peptide']))
-     
-     with open(args.nt_output, 'w') as ofo:
-         for valid_fusion_id in valid_fusions.keys():
-             print(valid_fusion_id)
-             meta = valid_fusions[valid_fusion_id]
-             print(meta)
-             # Context sequences are too long.
-             ofo.write(">{} NUCLEOTIDE_CONTEXT:{} PEPTIDE_CONTEXT:{}\n{}\n".format(valid_fusion_id, 'N/A', 'N/A', meta['nuc_seq']))
-
 
 def add_fusion_metadata(args):
     """
     """
 
     fusion_metadata = {}
-#    with open(args.fusions) as fo:
-#        col_to_idx = {}
-#        for line_idx, line in enumerate(fo.readlines()):
-#            line = line.rstrip().split()
-#            if line_idx ==  0:
-#                for col_idx, col in enumerate(line):
-#                    col_to_idx[col_idx] = col
-#            else:
-#                fusion_metadata[line[0][:15]] = {}
-#                for elem_idx, elem in enumerate(line[1:]):
-#                    fusion_metadata[line[0][:15]][col_to_idx[elem_idx + 1]] = elem
-
-#    with open(args.fusions) as fo:
-#        for line in fo.readlines():
-#            if line.startswith('>'):
-#                line = line.lstrip('>').rstrip().split(' ')
-#                nuc_context = line[1].split(':')[1] 
-#                protein_context = line[2].split(':')[1] 
-#                fusion_metadata[line[0][:15]]['nuc_context'] = nuc_context
-#                fusion_metadata[line[0][:15]]['protein_context'] = protein_context
-
 
     metadata = ['JunctionReadCount', 'SpanningFragCount', 'SpliceType', 'LeftGene',
                 'LeftBreakpoint', 'LeftBreakDinuc', 'LeftBreakEntropy', 'RightGene', 
@@ -4989,13 +3625,9 @@ def add_fusion_metadata(args):
                     header.remove('BindLevel')
                 except:
                     pass
-#                header_extension = extensions[:]
                 header.extend(header_extension)
                 header.insert(0, 'antigen_source')
-#                print(header)
                 header = header[:5] + header[11:]
-#                print(header)
-#                sys.exit(0)
                 header[1] = 'pos'
                 header[2] = 'mhc_allele'
                 header[3] = 'peptide'
@@ -5019,10 +3651,6 @@ def add_fusion_metadata(args):
                 line = line[:5] + line[11:]
                 print(line[5])
                 print(line[3])
-#                if '_' in line[5] and line[5].index('_') > line[5].index('-'):
-#                    print(fusion_metadata[line[5].rsplit('_')[0].replace('_', '.')]['protein_context'])
-#                else:
-#                    print(fusion_metadata[line[5].replace('_', '.')]['protein_context'])
 
 # Need to fix context code...
 #                if re.search(line[3], fusion_metadata[line[5].rsplit('_')[0].replace('_', '.')]['protein_context']):
@@ -5079,7 +3707,9 @@ def add_fusion_metadata(args):
 def add_splice_metadata(args):
     """
     """
-    new_header = ['antigen_source', 'peptide', 'chromosome', 'gene_name', 'strand', 'mhc_allele', 'binding_affinity', 'nucleotide_context', 'neosplice_min_expression', 'reads_with_peptide']
+    peptide_to_foreign = parse_ag_foreignness(args.ag_foreignness)
+    peptide_to_dissim = parse_ag_dissimilarity(args.ag_dissimilarity)
+    new_header = ['antigen_source', 'peptide', 'chromosome', 'gene_name', 'strand', 'mhc_allele', 'binding_affinity', 'nucleotide_context', 'neosplice_min_expression', 'reads_with_peptide', 'foreignness', 'dissimilarity']
     new_lines = []
 
     col_idx_map = {}
@@ -5105,12 +3735,17 @@ def add_splice_metadata(args):
 
             else:
                 line = line.split('\t')
-                base_new_line = ['SpliceVariant', line[col_idx_map['Variant_peptide_sequence']], line[col_idx_map['Chromosome']], line[col_idx_map['Gene']], line[col_idx_map['Strand']], 'ALLELE_PROXY', 'BA_PROXY', line[col_idx_map['DNA_sequence']], line[col_idx_map['min_expression']], line[col_idx_map['reads_with_peptide']]]
+                base_new_line = ['SpliceVariant', line[col_idx_map['Peptide']], line[col_idx_map['Chromosome']], line[col_idx_map['Gene']], line[col_idx_map['Strand']], 'ALLELE_PROXY', 'BA_PROXY', line[col_idx_map['DNA_sequence']], line[col_idx_map['min_expression']], line[col_idx_map['reads_with_peptide']]]
                 for allele in list(set([i.partition('_')[0] for i in mhc_info_map.keys()])):
                     print(allele)
                     allele_specific = base_new_line[:]
                     allele_specific[5] = allele
                     allele_specific[6] = line[mhc_info_map["{}_Nm".format(allele)]]
+                    try: 
+                        allele_specific.extend(peptide_to_foreign[allele_specific[1]])
+                    except:
+                        allele_specific.extend('N/A')
+                    allele_specific.extend(peptide_to_dissim[allele_specific[1]])
                     print(allele_specific)
 #                    allele_specific[7] = line[mhc_info_map["{}_binding_property".format(allele)]]
 
@@ -5120,10 +3755,6 @@ def add_splice_metadata(args):
         ofo.write("{}\n".format('\t'.join(new_header)))
         for new_line in new_lines:
             ofo.write("{}\n".format('\t'.join(new_line)))
-
-
-
-
 
 
 def add_rna_norms(args):
@@ -5407,7 +4038,6 @@ def check_erv_rna_coverage(args):
                     print("okay!")
                     print("{}\t{}\t{}\t{}".format(mean_depth, args.mean_depth, coverage, args.coverage))
                     if float(coverage) > float(args.coverage) and float(mean_depth) > float(args.mean_depth):
-#                        rna_covered_hervs.append("{}\t{}".format(samp, line[col_map['numreads']]))
                         rna_covered_hervs.append("{},{}".format(samp, expressed_hervs[samp]))
 
     if rna_covered_hervs:
@@ -5480,7 +4110,6 @@ def get_snv_peptide_read_count(args):
             md5_meta[split_id[0].replace(':', '_')[:15]]['cdna_pos'] = split_id[3].replace('CDNA_POS:', '')
             md5_meta[split_id[0].replace(':', '_')[:15]]['tx'] = split_id[4].replace('TRANSCRIPT:', '')
             md5_meta[split_id[0].replace(':', '_')[:15]]['seq'] = seq_record.seq
-#            id = split_id[0].replace(':', '_')
         elif re.search('ENST|ENSMUST', id):
             print("Found ENST|ENSMUST")
             id = seq_record.description
@@ -5560,10 +4189,14 @@ def get_snv_peptide_read_count(args):
                     if contig_id_no_suffix in list(rna_bam.references):
                         #Test further. Appears mouse reference doesn't use tx version.
                         bam_contig_id = contig_id_no_suffix
+                    print("Final BAM config ID: {}".format(bam_contig_id))
+                    print("lo, hi: {}, {}, {}".format(lo_coord_gnm, hi_coord_gnm, peptide_nt_seq))
                     for read in rna_bam.fetch(bam_contig_id, lo_coord_gnm, hi_coord_gnm):
                         if read.get_overlap(lo_coord_gnm, hi_coord_gnm) >= len(peptide_nt_seq):
+                            print("query seq: {}".format(read.query_sequence))
                             if bool(re.search(peptide_nt_seq, read.query_sequence)):
                                 covered_reads.append(read)
+                    print("Number of reads covering: {}".format(len(covered_reads)))
                     if len(covered_reads) > 0:
                         for read in covered_reads:
                             print("{}\t{}".format(read.get_overlap(lo_coord_gnm, hi_coord_gnm), len(peptide_nt_seq)))
@@ -5573,7 +4206,6 @@ def get_snv_peptide_read_count(args):
                             print("Variant Seq: {}".format(peptide_nt_seq))
                             if bool(re.search(peptide_nt_seq, read.query_sequence)):
                                 print("Hit!")
-#                    print("Number of full overlap reads: {}".format(len(covered_reads)))
                     positive_hits = 0
                     print(tx_meta.keys()[:10])
                     tx_strand = ''
@@ -5584,14 +4216,15 @@ def get_snv_peptide_read_count(args):
                     if tx_strand == '-':
                         peptide_nt_seq = str(Seq(peptide_nt_seq).reverse_complement())
                     if len(covered_reads) > 0:
+#                    if len(covered_reads) >= 0:
                         for read in covered_reads:
                             if bool(re.search(peptide_nt_seq, read.query_sequence)):
                                 positive_hits += 1
                         print("Positive hits: {}".format(positive_hits))
+                        prop_var = "N/A"
                         prop_var = positive_hits/(len(covered_reads) + 0.0)
-                        if prop_var > 0:
+                        if prop_var > 0.0:
                             line.extend([str(len(covered_reads)), str(positive_hits), str(prop_var)])
-#                            printable_lines.append(line.extend([positive_hits, prop_var]))
                             printable_lines.append(line)
     print(printable_lines)
 
@@ -5600,11 +4233,14 @@ def get_snv_peptide_read_count(args):
         header.remove('BindLevel')
     except:
         pass
-    with open(args.output, 'w') as ofo:
-        print(header)
-        ofo.write('{}\n'.format('\t'.join(header)))
-        for line in printable_lines:
-            ofo.write('{}\n'.format('\t'.join(line)))
+
+    if printable_lines:
+        with open(args.output, 'w') as ofo:
+            print(header)
+            ofo.write('{}\n'.format('\t'.join(header)))
+            for line in printable_lines:
+                ofo.write('{}\n'.format('\t'.join(line)))
+
 
 def get_indel_peptide_read_count(args):
     """
@@ -5882,18 +4518,22 @@ def get_peptide_read_count(args):
                         print("Positive hits: {}".format(positive_hits))
                         prop_var = positive_hits/(len(covered_reads) + 0.0)
                         if prop_var > 0:
+#                        if prop_var >= 0:
                             line.extend([str(len(covered_reads)), str(positive_hits), str(prop_var)])
-#                            printable_lines.append(line.extend([positive_hits, prop_var]))
-                            printable_lines.append(line)
+                            printable_lines.append(line.extend([positive_hits, prop_var]))
+#                            printable_lines.append(line)
     print(printable_lines)
 
     header.extend(['total_reads_full_overlap', 'reads_with_peptide', 'proportion_full_overlap_reads_with_peptide'])
-    header.remove('BindLevel')
-    with open(args.output, 'w') as ofo:
-        print(header)
-        ofo.write('{}\n'.format('\t'.join(header)))
-        for line in printable_lines:
-            ofo.write('{}\n'.format('\t'.join(line)))
+    if 'BindLevel' in header:
+        header.remove('BindLevel')
+
+    if printable_lines:
+        with open(args.output, 'w') as ofo:
+            print(header)
+            ofo.write('{}\n'.format('\t'.join(header)))
+            for line in printable_lines:
+                ofo.write('{}\n'.format('\t'.join(line)))
                         
 
 def get_fusion_peptide_read_count(args):
@@ -6005,11 +4645,12 @@ def get_fusion_peptide_read_count(args):
     header.extend(['total_reads_full_overlap', 'reads_with_peptide', 'proportion_full_overlap_reads_with_peptide'])
     if 'BindLevel' in header:
         header.remove('BindLevel')
-    with open(args.output, 'w') as ofo:
-        print(header)
-        ofo.write('{}\n'.format('\t'.join(header)))
-        for line in printable_lines:
-            ofo.write('{}\n'.format('\t'.join(line)))
+    if printable_lines:
+        with open(args.output, 'w') as ofo:
+            print(header)
+            ofo.write('{}\n'.format('\t'.join(header)))
+            for line in printable_lines:
+                ofo.write('{}\n'.format('\t'.join(line)))
 
 
 def get_splice_peptide_read_count(args):
@@ -6028,7 +4669,7 @@ def get_splice_peptide_read_count(args):
         for line_idx, line in enumerate(fo.readlines()):
             line = line.rstrip().split('\t')
             if line_idx == 0:
-                header = line
+                header = [x for x in line if not(x.endswith('_y')) and not(x.endswith('_z')) and not(re.search('Variant_peptide_sequence', x))]
             else:
                 dna_seq = line[1]
                 print(dna_seq)
@@ -6042,7 +4683,8 @@ def get_splice_peptide_read_count(args):
                     covered_reads = []
                     positive_hits = 0
                     for read in rna_bam.fetch(chr, coord_lo, coord_hi):
-#                        print("{}\t{}".format(read.get_overlap(coord_lo, coord_hi), len(dna_seq)))
+                        print("{}\t{}".format(dna_seq, read.query_sequence))
+                        print("{}\t{}".format(read.get_overlap(coord_lo, coord_hi), len(dna_seq)))
                         # greater than or equal to instead of equal to due to
                         # looking at a larger range than actual DNA sequence
                         if read.get_overlap(coord_lo, coord_hi) >= len(dna_seq):
@@ -6066,18 +4708,21 @@ def get_splice_peptide_read_count(args):
                     print("{}\t{}".format(coord_lo, coord_hi))
                     for read in rna_bam.fetch(chr, coord_lo, coord_hi):
 #                        print("{}\t{}".format(read.get_overlap(coord_lo, coord_hi), len(dna_seq)))
+                        print("{}\t{}".format(dna_seq, read.query_sequence))
+                        print("{}\t{}".format(read.get_overlap(coord_lo, coord_hi), len(dna_seq)))
                         # greater than or equal to instead of equal to due to
                         # looking at a larger range than actual DNA sequence
                         if read.get_overlap(coord_lo, coord_hi) >= len(dna_seq):
                             covered_reads.append(read.query_sequence)
                     if len(covered_reads) > 0:
                         for read in covered_reads:
-                            #print(read)
-                            #print(Seq(read).reverse_complement())
-                            if bool(re.search(dna_seq, str(Seq(read).reverse_complement()))):
-                                #print(dna_seq)
-                                #print(read)
-                                #print(re.search(dna_seq, str(Seq(read).reverse_compement())))
+#                            print(read)
+                            print("{}\t{}".format(dna_seq, Seq(read).reverse_complement()))
+                            if bool(re.search(str(dna_seq), str(Seq(read).reverse_complement()))):
+#                            if bool(re.search(str(dna_seq), str(read))) or bool(re.search(str(dna_seq), str(Seq(read).reverse_complement()))):
+                                print(dna_seq)
+                                print(read)
+                                print(re.search(dna_seq, str(Seq(read).reverse_compement())))
                                 print("Peptide NT: {}".format(dna_seq))
                                 print("Read: {}".format(read))
                                 print(re.search(dna_seq, read))
@@ -6092,12 +4737,15 @@ def get_splice_peptide_read_count(args):
                     printable_lines.append(line)
     print(printable_lines)
 
-    header.extend(['total_reads_full_overlap', 'reads_with_peptide', 'proportion_full_overlap_reads_with_peptide'])
-    with open(args.output, 'w') as ofo:
-        print(header)
-        ofo.write('{}\n'.format('\t'.join(header)))
-        for line in printable_lines:
-            ofo.write('{}\n'.format('\t'.join(line)))
+
+    if printable_lines:
+        header.insert(0, 'Peptide')
+        header.extend(['total_reads_full_overlap', 'reads_with_peptide', 'proportion_full_overlap_reads_with_peptide'])
+        with open(args.output, 'w') as ofo:
+            print(header)
+            ofo.write('{}\n'.format('\t'.join(header)))
+            for line in printable_lines:
+                ofo.write('{}\n'.format('\t'.join(line)))
 
 
 def iupac_conversion(base):
@@ -6112,9 +4760,46 @@ def iupac_conversion(base):
     else:
         return []
 
+def parse_ag_foreignness(ag_foreignness_file):
+    peptide_to_foreign = {}
+    with open(ag_foreignness_file) as ffo:
+        foreign_col_idx = ''
+        pep_col_idx = ''
+        for line_idx, line in enumerate(ffo.readlines()):
+            line = line.strip()
+            if line_idx == 0:
+                print(line)
+                foreign_col_idx = line.split(',').index('foreignness_score')
+                pep_col_idx = line.split(',').index('nmer')
+            else:
+                line = line.split(',')
+                peptide_to_foreign[line[pep_col_idx]] = line[foreign_col_idx]
+    return peptide_to_foreign
 
-                
-                
+def parse_ag_dissimilarity(ag_dissimilarity_file):
+    peptide_to_dissim = {}
+    with open(ag_dissimilarity_file) as ffo:
+        dissim_col_idx = ''
+        pep_col_idx = ''
+        for line_idx, line in enumerate(ffo.readlines()):
+            line = line.strip()
+            if line_idx == 0:
+                dissim_col_idx = line.split(',').index('dissimilarity')
+                pep_col_idx = line.split(',').index('nmer')
+            else:
+                line = line.split(',')
+                peptide_to_dissim[line[pep_col_idx]] = line[dissim_col_idx]
+
+    return peptide_to_dissim
+
+def parse_netmhcstabpan(netmhcstabpan_file):
+    peptide_allele_to_stability = {}
+    with open(netmhcstabpan_file) as ffo:
+        for line in ffo.readlines():
+            if line.startswith(" ") and re.search("HLA-", line):
+                line = line.split()
+                peptide_allele_to_stability["{}-{}".format(line[1], line[2])] = line[5]
+    return peptide_allele_to_stability
 
 def main():
     args = get_args()
